@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+  <title>
+    
+      BitCoin SPV &middot; l's Blog
+    
+  </title>
+
+  <!-- Bootstrap -->
+  <link rel="stylesheet" href="/assets/bootstrap-3.3.7-dist/css/bootstrap.min.css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="/assets/font-awesome/css/font-awesome.min.css">
+  <!-- My CSS -->
+  <link rel="stylesheet" href="/assets/main.css">
+
+  <!-- MathJax -->
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      TeX: {
+        equationNumbers: {
+          autoNumber: "AMS"
+        }
+      },
+      tex2jax: {
+        inlineMath: [ ['$','$'] ],
+        displayMath: [ ['$$','$$'] ],
+        processEscapes: true,
+      }
+    });
+  </script>
+  
+
+  <!-- code highlighting-->
+  <link rel="stylesheet" href="/lib/highlight/styles/hybrid.css">
+  <script src="/lib/highlight/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <script>hljs.configure({ ignore: ['text'] });</script>
+  
+  <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+  <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+  <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+  <![endif]-->
+</head>
+
+<body>
+    <header class="header">
+  <!-- Navigation -->
+  <nav class="navbar navbar-default .navbar-static-top">
+    <div class="container">
+      <!-- Brand and toggle get grouped for better mobile display -->
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+          <span class="sr-only">Toggle navigation</span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+      </div>
+
+      <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+        <ul class="nav navbar-nav navbar-right">
+          <li class="nav-search">
+            <form class="navbar-form navbar-left" role="search" id="search-form">
+              <div class="input-group">
+                  <span class="input-group-btn">
+                    <button class="btn btn-default" type="button" style="color:#777">Go!</button>
+                  </span>
+                  <input type="text" id="search-input" class="form-control" placeholder="Search">
+                  
+              </div>
+            </form>
+          </li>
+          <li>
+            <a href="/archives.html">Archives</a>
+          </li>
+          <li>
+            <a href="/tags.html">Tags</a>
+          </li>
+          <li>
+            <a href="/about.html">About</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+</header>
+
+  
+    <div class="container">
+  <div class="row-fluid main">
+    <div class="col-md-9 content">
+      <article class="post">
+        <h1 class="post-title">BitCoin SPV</h1>
+
+        <div class="post-info">
+          <span class="post-date">15 Oct 2017</span>
+           | 
+            <span class="fa fa-tag" aria-hidden="true">
+            
+              <a class="post-tags" href="/tags.html#BitCoin">BitCoin</a>
+            
+            </span>
+          
+        </div>
+
+        <hr>
+        <div class="post-content">
+          <h2 id="spv-是什么">SPV 是什么？</h2>
+<p>一个比特币区块可以分为区块头和该区块包含的所有交易数据，区块头的大小是80字节，而一个交易的平均大小是250字节，平均一个区块包含超过500个交易，所以一个完整的区块大小几乎是区块头的1000倍。一个包含完整区块链数据的全节点占有可观的存储空间，但是许多比特币客户端（如智能手机等）不具备这样的条件，它们通常采用 SPV 技术只存储所有区块头组成的链表，这种设备被称为 SPV 客户端。</p>
+
+<h2 id="spv-如何验证交易">SPV 如何验证交易</h2>
+<p>SPV 节点因为没有交易数据，没办法像全节点一样独立验证一个交易，它必须向周围的全节点查询交易是否存在某个区块中，如果在一个区块中，并且这个区块已经得到做够多的确认（已经有6个新块在其上生成了），从而这个交易得到认证。
+SPV 节点与周围的全节点建立连接，通过发送 getheaders 消息给对方来获取区块头，并且在连接上设置过滤器，获取自己感兴趣的交易数据以及新生成的区块头。</p>
+<h2 id="merkle-树">Merkle 树</h2>
+<p>SPV 节点没有完整的交易数据，是如何验证某个交易是否存在于区块中的呢？这里用到了一个数据结构 Merkle 树：</p>
+
+<p><img src="/assets/img/Hash_Tree.svg.png" alt="Hash Tree" height="70%" width="70%" /></p>
+
+<p>Merkle 树是一棵满二叉树，叶节点是这个区块中各个交易数据的Hash值（运行两次SHA256），非页节点是对两个子节点的连接（HA+HB）求Hash值：</p>
+
+<p><img src="/assets/img/Merkle_Tree.png" alt="Merkle Tree" height="70%" width="70%" /></p>
+
+<ol>
+  <li>HA = SHA256(SHA256(Transaction A Data))</li>
+  <li>HB = SHA256(SHA256(Transaction B Data))</li>
+  <li>HAB = SHA256(SHA256(HA+HB))</li>
+</ol>
+
+<p>为了生成一棵满二叉树，当交易个数是奇数的时候，会复制最后一个交易作最后一个叶节点。
+Merkele 树就是按照以上描述的规则之下而上生成，生成的根节点最后会保存到区块头中。</p>
+<h2 id="spv-使用-merkle-路径验证交易">SPV 使用 Merkle 路径验证交易</h2>
+<p>现在SPV 节点想验证上图（Merkle Tree）中的交易A是否存在，只需要知道节点HB和HCD就可以算出来根节点，然后与区块头中保存的根节点作比较，如果相匹配就验证了A存在该区块中。在这里HB和HCD称作交易A的 Merkle 路径。</p>
+
+<p>SPV 节点在和其他全节点的连接上设置了过滤器表示对A交易感兴趣，当有一个全节点遇到A交易后，就会通过 merkleblock 消息把该交易数据和其所在的区块头，以及 Mekle 路径数据传给它，SPV 节点可以验证A是否存在该区块中，并把区块头链接到自己的区块链中。</p>
+<h2 id="bloom-过滤器">Bloom 过滤器</h2>
+<p>上文说SPV 节点可以设置过滤器过滤自己感兴趣的交易，而不用接收所有交易数据。这个过滤器最简单的实现是直接告诉对方想要什么样输出地址的交易等，从而可以在SPV 节点构建一个钱包。但是这个信息很可能被网络上的不怀好意的人监听，导致泄漏了自己的隐私。</p>
+
+<p>Bloom 过滤器可以描述一个你想要的搜索模式而不用直接告诉具体的东西（就像在搜索引擎中搜索关键字或者设置一个正则表达式匹配字符串一样），它提供了一种高效的方式可以让你表达你想要的搜索模式的同时可以保护你的隐私。</p>
+
+<p>使用者可以微调搜索模式，但是搜索模式越精确会带来越差的私密性，反之模式越不精确可能私密性越好。Bloom 过滤器的具体实现细节可以参考维基百科<a href="https://en.wikipedia.org/wiki/Bloom_filter">Bloom filter</a>，类似对原始数据做哈希运算，然后把输出信息编码到一个二进制串里面。</p>
+
+<p>SPV 节点会先把 bloom filter 初始化为空，意味着匹配不到任何数据，然后会把感兴趣的比特币地址，公钥，交易id，作为各个匹配模式集成到一个 bloom filter中，之后通过 filterload 消息发到全节点，在全节点这一方则会把每一个交易对这个 bloom filter做过滤，把匹配到的数据发回给 SPV 节点。</p>
+
+<h2 id="spv-风险">SPV 风险</h2>
+
+<p>SPV 节点可以验证一个交易是否存在，但是不能证实一个交易不存在，结果就是容易被不诚实的节点攻击，例如双花同一笔UTXO（Unspent Transaction Output），SPV 节点不能证实这个UTXO没有被其他交易花掉，有可能这个已经被花费的交易被不诚实的节点隐藏起来了。</p>
+
+<p>虽然bloom filter 过滤器在一定程度上保护了 SPV 节点的隐私，但是并不是完全私密的，只要在网络上进行长期监控收集到足够多的数据，还是能获取到有用信息的。</p>
+
+<p>为了解决这些风险，可以对连接通道进行加密并对连接的节点进行认证。</p>
+
+        </div>
+        <br><br>
+      </article>
+
+      <nav class="post-pagination">
+        
+        
+        <a href="/Hugo+Isso+build+blog.html" class="btn next" title="Hugo + Isso 搭建blog">Hugo + Isso 搭建blog &rarr;</a>
+        
+      </nav>
+
+      <hr>
+
+      
+      <aside class="related">
+        <h3>Related Posts</h3>
+        <ul class="related-posts">
+          
+            <li>
+              <a href="/relay.html">
+                Relay
+                <small><time datetime="2021-01-04T00:00:00+08:00">04 Jan 2021</time></small>
+              </a>
+            </li>
+          
+            <li>
+              <a href="/Hugo+Isso+build+blog.html">
+                Hugo + Isso 搭建blog
+                <small><time datetime="2020-07-26T00:00:00+08:00">26 Jul 2020</time></small>
+              </a>
+            </li>
+          
+        </ul>
+      </aside>
+      
+
+      <!-- Gitment -->
+<div id="container"></div>
+<link rel="stylesheet" href="https://imsun.github.io/gitment/style/default.css">
+<script src="https://imsun.github.io/gitment/dist/gitment.browser.js"></script>
+<script>
+var gitment = new Gitment({
+  id: '页面 ID', // 可选。默认为 location.href
+  owner: 'longzhiri',
+  repo: 'longzhiri.github.io',
+  oauth: {
+    client_id: '40054f53427decc34ab1',
+    client_secret: 'd074254a9560c3477283da056388cd00e9122246',
+  },
+})
+gitment.render('container')
+</script>
+
+    </div>
+    
+    <div class="col-md-3 post-sidebar">
+      <div class="sidebar-content" id="sidebar">
+  <nav class="header-list-sidebar">
+    <ul id="sideNav" class="nav headers-sidenav">
+        <!-- code will be generated in TOC.js -->
+    </ul>
+  </nav>
+</div>
+    </div>
+  </div>
+</div>
+
+
+    <footer class="footer">
+  <div class="copyright">
+      Copyright &copy; <time datetime="2021-01-04T20:42:21+08:00">2021</time> <a href="http://longzhiri.github.io">longzhiri</a> | Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a> | Designed by <a href="http://longzhiri.github.io">longzhiri</a>
+  </div>
+</footer>
+
+    <a href="#top" class="back-to-top">^</a>
+
+<!--      -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="/assets/js/jquery-1.12.4.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="/assets/bootstrap-3.3.7-dist/js/bootstrap.min.js"></script>
+    <!-- TOC -->
+    <script src="/assets/js/toc/TOC.js"></script>
+
+    <script>$("#search-form").submit(function(event){
+      var query = document.getElementById("search-input").value;
+      window.open("http://google.com/search?q=" + query + "%20site:" + "lszero.github.io");
+    });</script>
+  </body>
+</html>

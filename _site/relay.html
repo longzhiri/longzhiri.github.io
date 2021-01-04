@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+  <title>
+    
+      Relay &middot; l's Blog
+    
+  </title>
+
+  <!-- Bootstrap -->
+  <link rel="stylesheet" href="/assets/bootstrap-3.3.7-dist/css/bootstrap.min.css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="/assets/font-awesome/css/font-awesome.min.css">
+  <!-- My CSS -->
+  <link rel="stylesheet" href="/assets/main.css">
+
+  <!-- MathJax -->
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      TeX: {
+        equationNumbers: {
+          autoNumber: "AMS"
+        }
+      },
+      tex2jax: {
+        inlineMath: [ ['$','$'] ],
+        displayMath: [ ['$$','$$'] ],
+        processEscapes: true,
+      }
+    });
+  </script>
+  
+
+  <!-- code highlighting-->
+  <link rel="stylesheet" href="/lib/highlight/styles/hybrid.css">
+  <script src="/lib/highlight/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <script>hljs.configure({ ignore: ['text'] });</script>
+  
+  <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+  <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+  <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+  <![endif]-->
+</head>
+
+<body>
+    <header class="header">
+  <!-- Navigation -->
+  <nav class="navbar navbar-default .navbar-static-top">
+    <div class="container">
+      <!-- Brand and toggle get grouped for better mobile display -->
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+          <span class="sr-only">Toggle navigation</span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+      </div>
+
+      <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+        <ul class="nav navbar-nav navbar-right">
+          <li class="nav-search">
+            <form class="navbar-form navbar-left" role="search" id="search-form">
+              <div class="input-group">
+                  <span class="input-group-btn">
+                    <button class="btn btn-default" type="button" style="color:#777">Go!</button>
+                  </span>
+                  <input type="text" id="search-input" class="form-control" placeholder="Search">
+                  
+              </div>
+            </form>
+          </li>
+          <li>
+            <a href="/archives.html">Archives</a>
+          </li>
+          <li>
+            <a href="/tags.html">Tags</a>
+          </li>
+          <li>
+            <a href="/about.html">About</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+</header>
+
+  
+    <div class="container">
+  <div class="row-fluid main">
+    <div class="col-md-9 content">
+      <article class="post">
+        <h1 class="post-title">Relay</h1>
+
+        <div class="post-info">
+          <span class="post-date">04 Jan 2021</span>
+           | 
+            <span class="fa fa-tag" aria-hidden="true">
+            
+              <a class="post-tags" href="/tags.html#Network">Network</a>
+            
+              <a class="post-tags" href="/tags.html#C">C</a>
+            
+            </span>
+          
+        </div>
+
+        <hr>
+        <div class="post-content">
+          <h1 id="relay基于zmq的进程间连接通信解耦">relay:基于zmq的进程间连接通信解耦</h1>
+
+<p>后端服务通常是多个进程各自提供部分功能联合起来作为整体对外提供服务，经常会有不同后端进程间互相通信的需求，有时还有进程间相互保活维持连接状态的需求。如果进程数比较少，相互建立网络连接也能简单解决，但如果服务扩展，进程数变多了，网络拓扑结构连接错综复杂，难以部署和动态扩容。</p>
+
+<p><a href="https://github.com/longzhiri/relay">源代码在此</a></p>
+
+<h3 id="relay的设计目的">relay的设计目的</h3>
+
+<p>relay server解耦原来需要互相连接进行通信的进程，所有relay client进程只连接relay server，relay server路由转发relay client之间的通信消息。client本身可以带有基于每次连接会话的状态，旧的连接会话中的消息不能影响新的连接会话。relay client能及时获取到彼此的存活状态，断开连接会话重连尝试建立新会话。</p>
+
+<h3 id="设计方案">设计方案</h3>
+
+<p>使用ZMQ作为底层网络连接和消息通信机制，简化实现，跨平台，高效。</p>
+
+<ol>
+  <li>
+    <p>客户端，服务端分别使用DELEAR socket type 和 ROUTER socket type；</p>
+  </li>
+  <li>
+    <p>上层使用心跳检测网络连接状态，超时则触发重连；</p>
+  </li>
+  <li>
+    <p>维护客户端两两之间的连接状态，每条连接是一个连接会话，用递增的会话id标识，消息带上会话id发送，过期的会话消息会被丢弃；</p>
+  </li>
+  <li>
+    <p>客户端使用独立线程收发网络消息，应用层异步收发消息，不阻塞主线程，使用起来更灵活；</p>
+  </li>
+</ol>
+
+<h3 id="使用zmq">使用ZMQ</h3>
+
+<ol>
+  <li>
+    <p>使用CZMQ的actor提供客户端多线程异步处理消息支持；</p>
+  </li>
+  <li>
+    <p>最初是计划监测网络断开和连接来维护连接状态，但是ZMQ并没有暴露给上层这样的事件回调接口，唯一可用的
+zmq_socket_monitor并不好用，比如事件的参数都是原始的fd，并不能很好的关联到对应的peer；</p>
+  </li>
+  <li>
+    <p>不使用默认的连接断开重连机制，因为relay的连接是有状态的，一次连接会话成功不仅在于网络连接建立成功，还需要发送注册协议，需要等待收到注册协议回包，并且relay server会广播给其他客户端；</p>
+  </li>
+  <li>
+    <p>router socket type每次调用zmsg_recv收到的msg第一个frame是peer的identity数据，标识客户端身份。客户端则需要调用zmq_setsockopt设置自己的identity（如不设置，则会被分配唯一id），参考文档：id的第一个字节不能是0。同样发送msg时，第一个frame也得是目标客户端得id数据；</p>
+  </li>
+</ol>
+
+<h3 id="reference">Reference</h3>
+
+<ol>
+  <li>
+    <p><a href="https://zguide.zeromq.org/">The Guide</a></p>
+  </li>
+  <li>
+    <p><a href="http://api.zeromq.org/">ZMQ API</a></p>
+  </li>
+  <li>
+    <p><a href="http://czmq.zeromq.org/czmq4-0:_start">CZMQ API</a></p>
+  </li>
+</ol>
+
+
+        </div>
+        <br><br>
+      </article>
+
+      <nav class="post-pagination">
+        
+        <a href="/Hugo+Isso+build+blog.html" class="btn previous" title="Hugo + Isso 搭建blog">&larr; Hugo + Isso 搭建blog</a>
+        
+        
+      </nav>
+
+      <hr>
+
+      
+      <aside class="related">
+        <h3>Related Posts</h3>
+        <ul class="related-posts">
+          
+            <li>
+              <a href="/Hugo+Isso+build+blog.html">
+                Hugo + Isso 搭建blog
+                <small><time datetime="2020-07-26T00:00:00+08:00">26 Jul 2020</time></small>
+              </a>
+            </li>
+          
+            <li>
+              <a href="/spv.html">
+                BitCoin SPV
+                <small><time datetime="2017-10-15T00:00:00+08:00">15 Oct 2017</time></small>
+              </a>
+            </li>
+          
+        </ul>
+      </aside>
+      
+
+      <!-- Gitment -->
+<div id="container"></div>
+<link rel="stylesheet" href="https://imsun.github.io/gitment/style/default.css">
+<script src="https://imsun.github.io/gitment/dist/gitment.browser.js"></script>
+<script>
+var gitment = new Gitment({
+  id: '页面 ID', // 可选。默认为 location.href
+  owner: 'longzhiri',
+  repo: 'longzhiri.github.io',
+  oauth: {
+    client_id: '40054f53427decc34ab1',
+    client_secret: 'd074254a9560c3477283da056388cd00e9122246',
+  },
+})
+gitment.render('container')
+</script>
+
+    </div>
+    
+    <div class="col-md-3 post-sidebar">
+      <div class="sidebar-content" id="sidebar">
+  <nav class="header-list-sidebar">
+    <ul id="sideNav" class="nav headers-sidenav">
+        <!-- code will be generated in TOC.js -->
+    </ul>
+  </nav>
+</div>
+    </div>
+  </div>
+</div>
+
+
+    <footer class="footer">
+  <div class="copyright">
+      Copyright &copy; <time datetime="2021-01-04T20:42:21+08:00">2021</time> <a href="http://longzhiri.github.io">longzhiri</a> | Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a> | Designed by <a href="http://longzhiri.github.io">longzhiri</a>
+  </div>
+</footer>
+
+    <a href="#top" class="back-to-top">^</a>
+
+<!--      -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="/assets/js/jquery-1.12.4.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="/assets/bootstrap-3.3.7-dist/js/bootstrap.min.js"></script>
+    <!-- TOC -->
+    <script src="/assets/js/toc/TOC.js"></script>
+
+    <script>$("#search-form").submit(function(event){
+      var query = document.getElementById("search-input").value;
+      window.open("http://google.com/search?q=" + query + "%20site:" + "lszero.github.io");
+    });</script>
+  </body>
+</html>

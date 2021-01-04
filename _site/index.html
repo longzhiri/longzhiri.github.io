@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+  <title>
+    
+      l's Blog &middot; 
+    
+  </title>
+
+  <!-- Bootstrap -->
+  <link rel="stylesheet" href="/assets/bootstrap-3.3.7-dist/css/bootstrap.min.css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="/assets/font-awesome/css/font-awesome.min.css">
+  <!-- My CSS -->
+  <link rel="stylesheet" href="/assets/main.css">
+
+  <!-- MathJax -->
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      TeX: {
+        equationNumbers: {
+          autoNumber: "AMS"
+        }
+      },
+      tex2jax: {
+        inlineMath: [ ['$','$'] ],
+        displayMath: [ ['$$','$$'] ],
+        processEscapes: true,
+      }
+    });
+  </script>
+  
+
+  <!-- code highlighting-->
+  <link rel="stylesheet" href="/lib/highlight/styles/hybrid.css">
+  <script src="/lib/highlight/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <script>hljs.configure({ ignore: ['text'] });</script>
+  
+  <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+  <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+  <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+  <![endif]-->
+</head>
+
+<body>
+    <header class="header">
+  <!-- Navigation -->
+  <nav class="navbar navbar-default .navbar-static-top">
+    <div class="container">
+      <!-- Brand and toggle get grouped for better mobile display -->
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+          <span class="sr-only">Toggle navigation</span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+      </div>
+
+      <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+        <ul class="nav navbar-nav navbar-right">
+          <li class="nav-search">
+            <form class="navbar-form navbar-left" role="search" id="search-form">
+              <div class="input-group">
+                  <span class="input-group-btn">
+                    <button class="btn btn-default" type="button" style="color:#777">Go!</button>
+                  </span>
+                  <input type="text" id="search-input" class="form-control" placeholder="Search">
+                  
+              </div>
+            </form>
+          </li>
+          <li>
+            <a href="/archives.html">Archives</a>
+          </li>
+          <li>
+            <a href="/tags.html">Tags</a>
+          </li>
+          <li>
+            <a href="/about.html">About</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+</header>
+
+  
+    <div class="container">
+  <div class="row-fluid main">
+    <div class="col-md-9 content main-posts-preview">
+      
+      <article class="post-preview">
+        <h1 class="post-title">
+          <a href="/relay.html">Relay</a>
+        </h1>
+
+        <div class="post-info">
+          <span class="post-date">04 Jan 2021</span>
+           | 
+            <span class="fa fa-tag" aria-hidden="true">
+            
+              <a class="post-tags" href="/tags.html#Network">Network</a>
+            
+              <a class="post-tags" href="/tags.html#C">C</a>
+            
+            </span>
+          
+        </div>
+
+        <div class="post-excerpt">
+          <h1 id="relay基于zmq的进程间连接通信解耦">relay:基于zmq的进程间连接通信解耦</h1>
+
+<p>后端服务通常是多个进程各自提供部分功能联合起来作为整体对外提供服务，经常会有不同后端进程间互相通信的需求，有时还有进程间相互保活维持连接状态的需求。如果进程数比较少，相互建立网络连接也能简单解决，但如果服务扩展，进程数变多了，网络拓扑结构连接错综复杂，难以部署和动态扩容。</p>
+
+<p><a href="https://github.com/longzhiri/relay">源代码在此</a></p>
+
+<h3 id="relay的设计目的">relay的设计目的</h3>
+
+<p>relay server解耦原来需要互相连接进行通信的进程，所有relay client进程只连接relay server，relay server路由转发relay client之间的通信消息。client本身可以带有基于每次连接会话的状态，旧的连接会话中的消息不能影响新的连接会话。relay client能及时获取到彼此的存活状态，断开连接会话重连尝试建立新会话。</p>
+
+<h3 id="设计方案">设计方案</h3>
+
+<p>使用ZMQ作为底层网络连接和消息通信机制，简化实现，跨平台，高效。</p>
+
+<ol>
+  <li>
+    <p>客户端，服务端分别使用DELEAR socket type 和 ROUTER socket type；</p>
+  </li>
+  <li>
+    <p>上层使用心跳检测网络连接状态，超时则触发重连；</p>
+  </li>
+  <li>
+    <p>维护客户端两两之间的连接状态，每条连接是一个连接会话，用递增的会话id标识，消息带上会话id发送，过期的会话消息会被丢弃；</p>
+  </li>
+  <li>
+    <p>客户端使用独立线程收发网络消息，应用层异步收发消息，不阻塞主线程，使用起来更灵活；</p>
+  </li>
+</ol>
+
+<h3 id="使用zmq">使用ZMQ</h3>
+
+<ol>
+  <li>
+    <p>使用CZMQ的actor提供客户端多线程异步处理消息支持；</p>
+  </li>
+  <li>
+    <p>最初是计划监测网络断开和连接来维护连接状态，但是ZMQ并没有暴露给上层这样的事件回调接口，唯一可用的
+zmq_socket_monitor并不好用，比如事件的参数都是原始的fd，并不能很好的关联到对应的peer；</p>
+  </li>
+  <li>
+    <p>不使用默认的连接断开重连机制，因为relay的连接是有状态的，一次连接会话成功不仅在于网络连接建立成功，还需要发送注册协议，需要等待收到注册协议回包，并且relay server会广播给其他客户端；</p>
+  </li>
+  <li>
+    <p>router socket type每次调用zmsg_recv收到的msg第一个frame是peer的identity数据，标识客户端身份。客户端则需要调用zmq_setsockopt设置自己的identity（如不设置，则会被分配唯一id），参考文档：id的第一个字节不能是0。同样发送msg时，第一个frame也得是目标客户端得id数据；</p>
+  </li>
+</ol>
+
+<h3 id="reference">Reference</h3>
+
+<ol>
+  <li>
+    <p><a href="https://zguide.zeromq.org/">The Guide</a></p>
+  </li>
+  <li>
+    <p><a href="http://api.zeromq.org/">ZMQ API</a></p>
+  </li>
+  <li>
+    <p><a href="http://czmq.zeromq.org/czmq4-0:_start">CZMQ API</a></p>
+  </li>
+</ol>
+
+
+        </div>
+
+        <div class="post-readmore">
+          <a class="read-more" href="/relay.html">Read More</a>
+        </div>
+      </article>
+      <hr />
+      
+      <article class="post-preview">
+        <h1 class="post-title">
+          <a href="/Hugo+Isso+build+blog.html">Hugo + Isso 搭建blog</a>
+        </h1>
+
+        <div class="post-info">
+          <span class="post-date">26 Jul 2020</span>
+           | 
+            <span class="fa fa-tag" aria-hidden="true">
+            
+              <a class="post-tags" href="/tags.html#Linux">Linux</a>
+            
+              <a class="post-tags" href="/tags.html#Python">Python</a>
+            
+              <a class="post-tags" href="/tags.html#Blog">Blog</a>
+            
+            </span>
+          
+        </div>
+
+        <div class="post-excerpt">
+          <p><a href="https://gohugo.io/">Hugo</a>是golang实现的静态网址生成器，主题丰富，使用简单。<a href="https://posativ.org/isso/">Isso</a>则是python实现的类似Disqus的开源评论服务器。本站就是使用Hugo的一个极简主题<a href="https://themes.gohugo.io/hugo-theme-even/">Even</a>生成静态内容，Isso server提供评论服务，Nginx作为web server反向代理Isso并提供静态内容。以下是我在centos7上的详细安装部署步骤：</p>
+
+<h3 id="安装hugo">安装Hugo</h3>
+<p>这里是按照源码方式安装的（官方文档有编译好的二进制下载安装方法说明），源码安装需要先安装golang（<a href="https://golang.org/doc/install">安装文档点我</a>），按照文档安装完golang后，运行如下命令<a href="https://gohugo.io/getting-started/installing/">安装Hugo</a>：</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/gohugoio/hugo.git 
+<span class="nb">cd </span>hugo 
+go <span class="nb">install</span> <span class="nt">--tags</span> extended 
+</code></pre></div></div>
+
+<h3 id="安装even主题">安装Even主题</h3>
+<h5 id="使用hugo创建站点">使用hugo创建站点</h5>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>hugo new site myblog
+</code></pre></div></div>
+<h5 id="安装主题">安装主题</h5>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd </span>myblog
+git init 
+git  submodule add https://github.com/olOwOlo/hugo-theme-even themes/even
+</code></pre></div></div>
+<h5 id="修改配置">修改配置</h5>
+<p>可以把主题目录下的config.toml拷贝覆盖到hugo站点根目录myblog下的config.toml，然后根据自己的需求及环境做对应修改。每项配置都有详细注释。</p>
+<h5 id="发表博客文章">发表博客文章</h5>
+<p>hugo可以直接写Markdown格式的博文，构建时会将其转成网页。</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>hugo new post/my-first-post.md <span class="c"># 会根据模板生成一个Md文件（注意路径名是post不是posts），编辑此文件开始写文章</span>
+</code></pre></div></div>
+<h5 id="调试站点效果">调试站点效果</h5>
+<p>hugo本身带有一个web server，方便及时查看改动的网页效果。</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>hugo Server <span class="nt">-D</span> <span class="c"># 启动web server，打开浏览器输入 http://127.0.0.1:1313即可查看站点效果</span>
+<span class="c"># 几个有用的启动参数</span>
+hugo Server <span class="nt">-D</span> <span class="nt">--bind</span> <span class="s2">"0.0.0.0"</span> <span class="c"># --bind 指定不同ip绑定，默认是"127.0.0.1"</span>
+hugo Server <span class="nt">-D</span> <span class="nt">--baseURL</span> <span class="s2">"http://127.0.0.1:1313"</span> <span class="c"># --baseURL 指定站点的地址</span>
+</code></pre></div></div>
+<h5 id="构建生成最终的静态网页">构建生成最终的静态网页</h5>
+<p>运行以下命令，会把站点所有静态内容文件生成在根目录下的public文件夹中，这也是后续正式部署的目标目录。</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>hugo <span class="nt">-D</span>
+</code></pre></div></div>
+
+<h3 id="安装isso">安装Isso</h3>
+<h5 id="安装python3">安装python3</h5>
+<p>Isso需要python3支持，centos7上安装python3可以按如下方式：</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 安装第三方软件源EPEL</span>
+yum <span class="nb">install </span>https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+<span class="c"># 安装python3</span>
+yum <span class="nb">install </span>python3
+<span class="c"># 安装gcc等构建工具集</span>
+yum groupinstall <span class="s1">'Development Tools'</span>
+<span class="c"># 安装python C API headers等</span>
+yum <span class="nb">install </span>python3-devel.x86_64  
+</code></pre></div></div>
+
+<h5 id="安装python虚拟环境">安装python虚拟环境</h5>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip3 <span class="nb">install </span>pipenv
+<span class="nb">mkdir </span>isso
+<span class="nb">cd </span>isso
+pipenv <span class="nt">--three</span> <span class="c"># 在isso创建python3虚拟环境</span>
+</code></pre></div></div>
+<p>pipenv会生成python3环境所需的所有文件到.venv文件夹，这个文件夹默认在~/.cache路径，可以设置export PIPENV_VENV_IN_PROJECT=”true”环境变量，让其生成在工程目录。</p>
+
+<h5 id="安装isso-1">安装Isso</h5>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pipenv shell
+pip <span class="nb">install </span>isso
+</code></pre></div></div>
+
+<h5 id="先根据自身需求修改isso-server配置">先根据自身需求修改Isso server配置</h5>
+<div class="language-ini highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">; |||||||||||| general settings ||||||||||||||
+</span><span class="nn">[general]</span>
+<span class="c">;database location. automatically created if doesn't already exist
+</span><span class="py">dbpath</span> <span class="p">=</span> <span class="s">/home/yourname/isso/comments.db</span>
+
+<span class="c">;this will be the 'X-Script-Name' we proxy server requests to [later!]
+</span><span class="py">name</span> <span class="p">=</span> <span class="s">isso</span>
+
+<span class="c">; your website or blog [not the location of Isso]
+</span><span class="py">host</span> <span class="p">=</span>
+    <span class="err">http://yoursite.com/</span>
+    <span class="err">https://yoursite.com/</span>
+
+<span class="c">; logfile. might need to create this first
+</span><span class="py">log-file</span> <span class="p">=</span> <span class="s">/home/yourname/isso/isso.log</span>
+
+<span class="c">; get notifications by email
+</span><span class="py">notify</span> <span class="p">=</span> <span class="s">smtp</span>
+
+<span class="c">;||||||||||| server section ||||||||||
+</span><span class="nn">[server]</span>
+<span class="c">;port to listen on. choose a number you like!
+</span><span class="py">listen</span> <span class="p">=</span> <span class="s">http://localhost:8181/</span>
+
+
+<span class="c">;||||||||| smtp section [for notifications] |||||
+</span><span class="nn">[smtp]</span>
+<span class="c">;these are the details for the 'from' address Isso uses to send notifications
+;you might want to use a dedicated email account for this
+</span><span class="py">username</span> <span class="p">=</span> <span class="s">yourusername</span>
+<span class="py">password</span> <span class="p">=</span> <span class="s">yourpassword</span>
+<span class="py">host</span> <span class="p">=</span> <span class="s">smtp.yourmailhost.com</span>
+<span class="py">port</span> <span class="p">=</span> <span class="s">587</span>
+<span class="py">security</span> <span class="p">=</span> <span class="s">starttls</span>
+
+<span class="c">;this is the 'to' address Isso sends notification emails to
+</span><span class="py">to</span> <span class="p">=</span> <span class="s">you@youremail.com</span>
+
+<span class="c">;from address as shown on emails. should correspond to sender account above
+</span><span class="py">from</span> <span class="p">=</span> <span class="s">"isso comments"</span> <span class="s">&lt;yourusername@yourmailhost.com&gt;</span>
+<span class="py">timeout</span> <span class="p">=</span> <span class="s">10</span>
+
+<span class="c">;|||||| guard –Isso's basic spam protection |||||||
+</span><span class="nn">[guard]</span>
+<span class="py">enabled</span> <span class="p">=</span> <span class="s">true</span>
+<span class="c">;no. of allowed comments per minute
+</span><span class="py">ratelimit</span> <span class="p">=</span> <span class="s">2</span>
+<span class="c">;no of direct replies allowed
+</span><span class="py">direct-reply</span> <span class="p">=</span> <span class="s">3</span>
+<span class="c">;can people reply to their own comments while edit window still open
+</span><span class="py">reply-to-self</span> <span class="p">=</span> <span class="s">false</span>
+<span class="c">;do commenters need to leave a name
+</span><span class="py">require-author</span> <span class="p">=</span> <span class="s">true</span>
+<span class="c">;do commenters need to provide an email
+</span><span class="py">require-email</span> <span class="p">=</span> <span class="s">false</span>
+
+<span class="c">;allowed markdown in comments. [uses misaka markdown]
+</span><span class="nn">[markup]</span>
+<span class="c">;default options allow most 'unharmful' markdown
+</span><span class="py">options</span> <span class="p">=</span> <span class="s">strikethrough, superscript, autolink</span>
+<span class="c">;default allowed = a, blockquote, br, code, del, em, h1, h2, h3, h4, h5, h6, hr, ins, li, ol, p, pre, strong, table, tbody, td, th, thead, ul
+;allowed-elements =
+;default allowed = align, href
+;allowed-attributes
+</span>
+<span class="c">;creates identicons for users across isso installations
+</span><span class="nn">[hash]</span>
+<span class="c">;OK to use this salt
+</span><span class="py">salt</span> <span class="p">=</span> <span class="s">Eech7co8Ohloopo9Ol6baimi</span>
+<span class="py">algorithm</span> <span class="p">=</span> <span class="s">pbkdf2</span>
+
+<span class="c">;comments must be moderated before publication
+;NOTE: requires "notify = smtp" to be set in the [general] section
+</span><span class="nn">[moderation]</span>
+<span class="py">enabled</span><span class="p">=</span><span class="s">false</span>
+</code></pre></div></div>
+<p>配置都有详细注释，也可见<a href="https://posativ.org/isso/docs/configuration/server/">文档描述</a>。</p>
+
+<h5 id="启动isso">启动Isso</h5>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>isso <span class="nt">-c</span> ~/isso/isso.cfg  
+</code></pre></div></div>
+<p>如果报错<code class="language-plaintext highlighter-rouge">ImportError: cannot import name SharedDataMiddleware</code>， 需要安装指定版本Werkzeug， 运行<code class="language-plaintext highlighter-rouge">pip install Werkzeug==0.16.1</code>。</p>
+
+<h5 id="isso客户端配置">Isso客户端配置</h5>
+<p>既在静态网页中需要引用Isso。修改hugo even主题文件：
+myglob/themes/even/layouts/partials/comments.html，这个文件里面有各种comments系统的配置，把isso的客户端配置加在最后（之前）</p>
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="c">&lt;!-- isso --&gt;</span>
+  <span class="nt">&lt;script </span><span class="na">data-isso=</span><span class="s">"isso/"</span> <span class="na">data-isso-require-author=</span><span class="s">"true"</span>  <span class="na">src=</span><span class="s">"isso/js/embed.min.js"</span><span class="nt">&gt;&lt;/script&gt;</span>
+  <span class="c">&lt;!-- end isso --&gt;</span>
+  
+  <span class="c">&lt;!-- begin comments //--&gt;</span>
+  <span class="nt">&lt;section</span> <span class="na">id=</span><span class="s">"isso-thread"</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;/section&gt;</span>
+  <span class="c">&lt;!-- end comments //--&gt;</span>
+</code></pre></div></div>
+<p>更多配置见<a href="https://posativ.org/isso/docs/configuration/client/">文档</a>。</p>
+
+<h3 id="安装ngix">安装Ngix</h3>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>yum <span class="nb">install </span>nginx
+</code></pre></div></div>
+
+<h3 id="部署">部署</h3>
+<h5 id="isso部署">isso部署</h5>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#添加新用户和组</span>
+useradd <span class="nt">-m</span> <span class="nt">-r</span> <span class="nt">-s</span> /sbin/nologin isso
+<span class="c">#添加工作目录</span>
+<span class="nb">chown</span> <span class="nt">-R</span> isso:isso /home/isso
+</code></pre></div></div>
+<h5 id="配置isso-service">配置isso service</h5>
+<p>新建文件/etc/systemd/system/isso.service</p>
+<div class="language-conf highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[<span class="n">Unit</span>]
+<span class="n">Description</span>=<span class="n">Isso</span> <span class="n">Comments</span>
+<span class="c">#start after networking stuff has loaded
+</span><span class="n">After</span>=<span class="n">network</span>.<span class="n">target</span>
+
+[<span class="n">Service</span>]
+<span class="c">#your name
+</span><span class="n">User</span>=<span class="n">isso</span>
+<span class="c">#group webserver runs under when serving web pages
+</span><span class="n">Group</span>=<span class="n">isso</span>
+<span class="n">WorkingDirectory</span>=/<span class="n">home</span>/<span class="n">isso</span>
+<span class="c">#max file dscriptor [equivalent of ulimit in terminal]
+</span><span class="n">LimitNOFILE</span>=<span class="m">8192</span>
+<span class="c">#location of isso script to run &amp; location of its config file
+#note the isso script is in the `bin` folder in your virtual environment
+#you don't need to activate your virtual environment here
+#it will automatically be activated when the isso script within it runs
+</span><span class="n">ExecStart</span>=/<span class="n">home</span>/<span class="n">isso</span>/.<span class="n">venv</span>/<span class="n">bin</span>/<span class="n">isso</span>  -<span class="n">c</span> /<span class="n">home</span>/<span class="n">isso</span>/<span class="n">isso</span>.<span class="n">cfg</span>
+<span class="c">#respawn isso process if it crashes
+</span><span class="n">Restart</span>=<span class="n">on</span>-<span class="n">failure</span>
+<span class="c">#wait 10 mins to respawn, if it's crashing constantly
+</span><span class="n">StartLimitInterval</span>=<span class="m">600</span>
+
+[<span class="n">Install</span>]
+<span class="c">#target [??? not sure what this means]
+</span><span class="n">WantedBy</span>=<span class="n">multi</span>-<span class="n">user</span>.<span class="n">target</span>
+
+<span class="c">#don't forget to enable it: sudo systemctl enable isso
+</span></code></pre></div></div>
+<p>设置开机启动</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>systemctl <span class="nb">enable </span>isso
+</code></pre></div></div>
+<h5 id="部署nginx">部署Nginx</h5>
+<p>创建静态网页目录/www/data/</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">mkdir</span> <span class="nt">-p</span>  /www/data/myblog/public
+<span class="nb">chown</span> <span class="nt">-R</span> nginx:nginx /www/data
+</code></pre></div></div>
+<p>nginx配置如下</p>
+<div class="language-conf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">user</span> <span class="n">nginx</span>;
+<span class="n">worker_processes</span> <span class="n">auto</span>;
+<span class="n">error_log</span> /<span class="n">var</span>/<span class="n">log</span>/<span class="n">nginx</span>/<span class="n">error</span>.<span class="n">log</span>;
+<span class="n">pid</span> /<span class="n">run</span>/<span class="n">nginx</span>.<span class="n">pid</span>;
+
+<span class="c"># Load dynamic modules. See /usr/share/doc/nginx/README.dynamic.
+</span><span class="n">include</span> /<span class="n">usr</span>/<span class="n">share</span>/<span class="n">nginx</span>/<span class="n">modules</span>/*.<span class="n">conf</span>;
+
+<span class="n">events</span> {
+    <span class="n">worker_connections</span> <span class="m">1024</span>;
+}
+
+<span class="n">http</span> {
+    <span class="n">log_format</span>  <span class="n">main</span>  <span class="s1">'$remote_addr - $remote_user [$time_local] "$request" '</span>
+                      <span class="s1">'$status $body_bytes_sent "$http_referer" '</span>
+                      <span class="s1">'"$http_user_agent" "$http_x_forwarded_for"'</span>;
+
+    <span class="n">access_log</span>  /<span class="n">var</span>/<span class="n">log</span>/<span class="n">nginx</span>/<span class="n">access</span>.<span class="n">log</span>  <span class="n">main</span>;
+
+    <span class="n">sendfile</span>            <span class="n">on</span>;
+    <span class="n">tcp_nopush</span>          <span class="n">on</span>;
+    <span class="n">tcp_nodelay</span>         <span class="n">on</span>;
+    <span class="n">keepalive_timeout</span>   <span class="m">65</span>;
+    <span class="n">types_hash_max_size</span> <span class="m">2048</span>;
+
+    <span class="n">include</span>             /<span class="n">etc</span>/<span class="n">nginx</span>/<span class="n">mime</span>.<span class="n">types</span>;
+    <span class="n">default_type</span>        <span class="n">application</span>/<span class="n">octet</span>-<span class="n">stream</span>;
+
+    <span class="c"># Load modular configuration files from the /etc/nginx/conf.d directory.
+</span>    <span class="c"># See http://nginx.org/en/docs/ngx_core_module.html#include
+</span>    <span class="c"># for more information.
+</span>    <span class="n">include</span> /<span class="n">etc</span>/<span class="n">nginx</span>/<span class="n">conf</span>.<span class="n">d</span>/*.<span class="n">conf</span>;
+
+    <span class="n">server</span> {
+        <span class="n">listen</span>       <span class="m">80</span> <span class="n">default_server</span>;
+        <span class="n">listen</span>       [::]:<span class="m">80</span> <span class="n">default_server</span>;
+        <span class="n">server_name</span>  <span class="err">_</span>;
+        <span class="n">root</span>         /<span class="n">usr</span>/<span class="n">share</span>/<span class="n">nginx</span>/<span class="n">html</span>;
+
+        <span class="c"># Load configuration files for the default server block.
+</span>        <span class="n">include</span> /<span class="n">etc</span>/<span class="n">nginx</span>/<span class="n">default</span>.<span class="n">d</span>/*.<span class="n">conf</span>;
+
+        <span class="n">location</span> /<span class="n">isso</span> {
+            <span class="n">proxy_set_header</span> <span class="n">X</span>-<span class="n">Script</span>-<span class="n">Name</span> /<span class="n">isso</span>;
+            <span class="n">proxy_set_header</span> <span class="n">X</span>-<span class="n">Forwarded</span>-<span class="n">For</span> $<span class="n">proxy_add_x_forwarded_for</span>;
+            <span class="n">proxy_set_header</span> <span class="n">Host</span> $<span class="n">host</span>;
+            <span class="n">proxy_set_header</span> <span class="n">X</span>-<span class="n">Forwarded</span>-<span class="n">Proto</span> $<span class="n">scheme</span>;
+            <span class="n">proxy_pass</span> <span class="n">http</span>://<span class="m">127</span>.<span class="m">0</span>.<span class="m">0</span>.<span class="m">1</span>:<span class="m">8181</span>;
+        }
+
+        <span class="n">location</span> / {
+            <span class="n">root</span> /<span class="n">www</span>/<span class="n">data</span>/<span class="n">myblog</span>/<span class="n">public</span>;
+        }
+   }
+   }
+</code></pre></div></div>
+<p>把hugo生成的public目录上传到服务器的/www/data/myblog/public位置</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>rsync <span class="nt">-avz</span> <span class="nt">--delete</span> public/ www-data@ftp.topologix.fr:~/www/
+</code></pre></div></div>
+<h5 id="启动服务">启动服务</h5>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>systemctl start nginx.service
+systemctl start isso.service
+</code></pre></div></div>
+
+<h3 id="参考">参考</h3>
+<p><a href="https://gohugo.io/documentation/">Hugo Documentation</a></p>
+
+<p><a href="https://posativ.org/isso/docs/">Isso Documentation</a></p>
+
+<p><a href="https://stiobhart.net/2017-02-24-isso-comments/">Hugo with Isso</a></p>
+
+        </div>
+
+        <div class="post-readmore">
+          <a class="read-more" href="/Hugo+Isso+build+blog.html">Read More</a>
+        </div>
+      </article>
+      <hr />
+      
+      <article class="post-preview">
+        <h1 class="post-title">
+          <a href="/spv.html">BitCoin SPV</a>
+        </h1>
+
+        <div class="post-info">
+          <span class="post-date">15 Oct 2017</span>
+           | 
+            <span class="fa fa-tag" aria-hidden="true">
+            
+              <a class="post-tags" href="/tags.html#BitCoin">BitCoin</a>
+            
+            </span>
+          
+        </div>
+
+        <div class="post-excerpt">
+          <h2 id="spv-是什么">SPV 是什么？</h2>
+<p>一个比特币区块可以分为区块头和该区块包含的所有交易数据，区块头的大小是80字节，而一个交易的平均大小是250字节，平均一个区块包含超过500个交易，所以一个完整的区块大小几乎是区块头的1000倍。一个包含完整区块链数据的全节点占有可观的存储空间，但是许多比特币客户端（如智能手机等）不具备这样的条件，它们通常采用 SPV 技术只存储所有区块头组成的链表，这种设备被称为 SPV 客户端。</p>
+
+<h2 id="spv-如何验证交易">SPV 如何验证交易</h2>
+<p>SPV 节点因为没有交易数据，没办法像全节点一样独立验证一个交易，它必须向周围的全节点查询交易是否存在某个区块中，如果在一个区块中，并且这个区块已经得到做够多的确认（已经有6个新块在其上生成了），从而这个交易得到认证。
+SPV 节点与周围的全节点建立连接，通过发送 getheaders 消息给对方来获取区块头，并且在连接上设置过滤器，获取自己感兴趣的交易数据以及新生成的区块头。</p>
+<h2 id="merkle-树">Merkle 树</h2>
+<p>SPV 节点没有完整的交易数据，是如何验证某个交易是否存在于区块中的呢？这里用到了一个数据结构 Merkle 树：</p>
+
+<p><img src="/assets/img/Hash_Tree.svg.png" alt="Hash Tree" height="70%" width="70%" /></p>
+
+<p>Merkle 树是一棵满二叉树，叶节点是这个区块中各个交易数据的Hash值（运行两次SHA256），非页节点是对两个子节点的连接（HA+HB）求Hash值：</p>
+
+<p><img src="/assets/img/Merkle_Tree.png" alt="Merkle Tree" height="70%" width="70%" /></p>
+
+<ol>
+  <li>HA = SHA256(SHA256(Transaction A Data))</li>
+  <li>HB = SHA256(SHA256(Transaction B Data))</li>
+  <li>HAB = SHA256(SHA256(HA+HB))</li>
+</ol>
+
+<p>为了生成一棵满二叉树，当交易个数是奇数的时候，会复制最后一个交易作最后一个叶节点。
+Merkele 树就是按照以上描述的规则之下而上生成，生成的根节点最后会保存到区块头中。</p>
+<h2 id="spv-使用-merkle-路径验证交易">SPV 使用 Merkle 路径验证交易</h2>
+<p>现在SPV 节点想验证上图（Merkle Tree）中的交易A是否存在，只需要知道节点HB和HCD就可以算出来根节点，然后与区块头中保存的根节点作比较，如果相匹配就验证了A存在该区块中。在这里HB和HCD称作交易A的 Merkle 路径。</p>
+
+<p>SPV 节点在和其他全节点的连接上设置了过滤器表示对A交易感兴趣，当有一个全节点遇到A交易后，就会通过 merkleblock 消息把该交易数据和其所在的区块头，以及 Mekle 路径数据传给它，SPV 节点可以验证A是否存在该区块中，并把区块头链接到自己的区块链中。</p>
+<h2 id="bloom-过滤器">Bloom 过滤器</h2>
+<p>上文说SPV 节点可以设置过滤器过滤自己感兴趣的交易，而不用接收所有交易数据。这个过滤器最简单的实现是直接告诉对方想要什么样输出地址的交易等，从而可以在SPV 节点构建一个钱包。但是这个信息很可能被网络上的不怀好意的人监听，导致泄漏了自己的隐私。</p>
+
+<p>Bloom 过滤器可以描述一个你想要的搜索模式而不用直接告诉具体的东西（就像在搜索引擎中搜索关键字或者设置一个正则表达式匹配字符串一样），它提供了一种高效的方式可以让你表达你想要的搜索模式的同时可以保护你的隐私。</p>
+
+<p>使用者可以微调搜索模式，但是搜索模式越精确会带来越差的私密性，反之模式越不精确可能私密性越好。Bloom 过滤器的具体实现细节可以参考维基百科<a href="https://en.wikipedia.org/wiki/Bloom_filter">Bloom filter</a>，类似对原始数据做哈希运算，然后把输出信息编码到一个二进制串里面。</p>
+
+<p>SPV 节点会先把 bloom filter 初始化为空，意味着匹配不到任何数据，然后会把感兴趣的比特币地址，公钥，交易id，作为各个匹配模式集成到一个 bloom filter中，之后通过 filterload 消息发到全节点，在全节点这一方则会把每一个交易对这个 bloom filter做过滤，把匹配到的数据发回给 SPV 节点。</p>
+
+<h2 id="spv-风险">SPV 风险</h2>
+
+<p>SPV 节点可以验证一个交易是否存在，但是不能证实一个交易不存在，结果就是容易被不诚实的节点攻击，例如双花同一笔UTXO（Unspent Transaction Output），SPV 节点不能证实这个UTXO没有被其他交易花掉，有可能这个已经被花费的交易被不诚实的节点隐藏起来了。</p>
+
+<p>虽然bloom filter 过滤器在一定程度上保护了 SPV 节点的隐私，但是并不是完全私密的，只要在网络上进行长期监控收集到足够多的数据，还是能获取到有用信息的。</p>
+
+<p>为了解决这些风险，可以对连接通道进行加密并对连接的节点进行认证。</p>
+
+        </div>
+
+        <div class="post-readmore">
+          <a class="read-more" href="/spv.html">Read More</a>
+        </div>
+      </article>
+      <hr />
+      
+
+      
+      <nav aria-label="Page navigation">
+        <ul class="pagination">
+          
+            <li><span>&laquo;</span></li>
+          
+
+          
+            
+              <li class="active"><a>1</a></li>
+            
+          
+
+          
+            <li><span>&raquo;</span></li>
+          
+        </ul>
+      </nav>
+      
+    </div>
+
+    <div class="col-md-3 main-sidebar">
+      <div class="sidebar-content" id="sidebar">
+  <hr />
+
+  <nav class="tags-list">
+    <h3 class="sidebar-title">Tags</h3>
+    <ul class="list-group">
+    
+      <li class="list-group-item">
+        <a href="/tags.html#BitCoin"> BitCoin</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Linux"> Linux</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Python"> Python</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Blog"> Blog</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Network"> Network</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#C"> C</a>
+        <span class="badge">1</span>
+      </li>
+    
+    </ul>
+  </nav>
+
+  <hr />
+
+</div>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+    <footer class="footer">
+  <div class="copyright">
+      Copyright &copy; <time datetime="2021-01-04T20:42:21+08:00">2021</time> <a href="http://longzhiri.github.io">longzhiri</a> | Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a> | Designed by <a href="http://longzhiri.github.io">longzhiri</a>
+  </div>
+</footer>
+
+    <a href="#top" class="back-to-top">^</a>
+
+<!--      -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="/assets/js/jquery-1.12.4.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="/assets/bootstrap-3.3.7-dist/js/bootstrap.min.js"></script>
+    <!-- TOC -->
+    <script src="/assets/js/toc/TOC.js"></script>
+
+    <script>$("#search-form").submit(function(event){
+      var query = document.getElementById("search-input").value;
+      window.open("http://google.com/search?q=" + query + "%20site:" + "lszero.github.io");
+    });</script>
+  </body>
+</html>
