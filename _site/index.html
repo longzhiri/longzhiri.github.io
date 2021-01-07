@@ -100,7 +100,42 @@
       
       <article class="post-preview">
         <h1 class="post-title">
-          <a href="/relay.html">Relay</a>
+          <a href="/Golang+Game+Logic+Sever+Design.html">Golang多线程游戏逻辑服务器设计</a>
+        </h1>
+
+        <div class="post-info">
+          <span class="post-date">07 Jan 2021</span>
+           | 
+            <span class="fa fa-tag" aria-hidden="true">
+            
+              <a class="post-tags" href="/tags.html#Network">Network</a>
+            
+              <a class="post-tags" href="/tags.html#Golang">Golang</a>
+            
+              <a class="post-tags" href="/tags.html#Game">Game</a>
+            
+              <a class="post-tags" href="/tags.html#Linux">Linux</a>
+            
+              <a class="post-tags" href="/tags.html#Server">Server</a>
+            
+            </span>
+          
+        </div>
+
+        <div class="post-excerpt">
+          <p>现在的游戏服务器设计的时候为了提高吞吐量会考虑充分利用多核的性能，一种思路是偏向多进程并发模型，不同游戏系统可以独立拆分不同进程并行运行，进程之间通过RPC交互，另一种思路就是本文要谈到的多线程模型。</p>
+
+        </div>
+
+        <div class="post-readmore">
+          <a class="read-more" href="/Golang+Game+Logic+Sever+Design.html">Read More</a>
+        </div>
+      </article>
+      <hr />
+      
+      <article class="post-preview">
+        <h1 class="post-title">
+          <a href="/relay.html">Relay:基于zmq的进程间连接通信解耦</a>
         </h1>
 
         <div class="post-info">
@@ -117,67 +152,7 @@
         </div>
 
         <div class="post-excerpt">
-          <h1 id="relay基于zmq的进程间连接通信解耦">relay:基于zmq的进程间连接通信解耦</h1>
-
-<p>后端服务通常是多个进程各自提供部分功能联合起来作为整体对外提供服务，经常会有不同后端进程间互相通信的需求，有时还有进程间相互保活维持连接状态的需求。如果进程数比较少，相互建立网络连接也能简单解决，但如果服务扩展，进程数变多了，网络拓扑结构连接错综复杂，难以部署和动态扩容。</p>
-
-<p><a href="https://github.com/longzhiri/relay">源代码在此</a></p>
-
-<h3 id="relay的设计目的">relay的设计目的</h3>
-
-<p>relay server解耦原来需要互相连接进行通信的进程，所有relay client进程只连接relay server，relay server路由转发relay client之间的通信消息。client本身可以带有基于每次连接会话的状态，旧的连接会话中的消息不能影响新的连接会话。relay client能及时获取到彼此的存活状态，断开连接会话重连尝试建立新会话。</p>
-
-<h3 id="设计方案">设计方案</h3>
-
-<p>使用ZMQ作为底层网络连接和消息通信机制，简化实现，跨平台，高效。</p>
-
-<ol>
-  <li>
-    <p>客户端，服务端分别使用DELEAR socket type 和 ROUTER socket type；</p>
-  </li>
-  <li>
-    <p>上层使用心跳检测网络连接状态，超时则触发重连；</p>
-  </li>
-  <li>
-    <p>维护客户端两两之间的连接状态，每条连接是一个连接会话，用递增的会话id标识，消息带上会话id发送，过期的会话消息会被丢弃；</p>
-  </li>
-  <li>
-    <p>客户端使用独立线程收发网络消息，应用层异步收发消息，不阻塞主线程，使用起来更灵活；</p>
-  </li>
-</ol>
-
-<h3 id="使用zmq">使用ZMQ</h3>
-
-<ol>
-  <li>
-    <p>使用CZMQ的actor提供客户端多线程异步处理消息支持；</p>
-  </li>
-  <li>
-    <p>最初是计划监测网络断开和连接来维护连接状态，但是ZMQ并没有暴露给上层这样的事件回调接口，唯一可用的
-zmq_socket_monitor并不好用，比如事件的参数都是原始的fd，并不能很好的关联到对应的peer；</p>
-  </li>
-  <li>
-    <p>不使用默认的连接断开重连机制，因为relay的连接是有状态的，一次连接会话成功不仅在于网络连接建立成功，还需要发送注册协议，需要等待收到注册协议回包，并且relay server会广播给其他客户端；</p>
-  </li>
-  <li>
-    <p>router socket type每次调用zmsg_recv收到的msg第一个frame是peer的identity数据，标识客户端身份。客户端则需要调用zmq_setsockopt设置自己的identity（如不设置，则会被分配唯一id），参考文档：id的第一个字节不能是0。同样发送msg时，第一个frame也得是目标客户端得id数据；</p>
-  </li>
-</ol>
-
-<h3 id="reference">Reference</h3>
-
-<ol>
-  <li>
-    <p><a href="https://zguide.zeromq.org/">The Guide</a></p>
-  </li>
-  <li>
-    <p><a href="http://api.zeromq.org/">ZMQ API</a></p>
-  </li>
-  <li>
-    <p><a href="http://czmq.zeromq.org/czmq4-0:_start">CZMQ API</a></p>
-  </li>
-</ol>
-
+          <p>后端服务通常是多个进程各自提供部分功能联合起来作为整体对外提供服务，经常会有不同后端进程间互相通信的需求，有时还有进程间相互保活维持连接状态的需求。如果进程数比较少，相互建立网络连接也能简单解决，但如果服务扩展，进程数变多了，网络拓扑结构连接错综复杂，难以部署和动态扩容。</p>
 
         </div>
 
@@ -216,279 +191,6 @@ zmq_socket_monitor并不好用，比如事件的参数都是原始的fd，并不
 <span class="nb">cd </span>hugo 
 go <span class="nb">install</span> <span class="nt">--tags</span> extended 
 </code></pre></div></div>
-
-<h3 id="安装even主题">安装Even主题</h3>
-<h5 id="使用hugo创建站点">使用hugo创建站点</h5>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>hugo new site myblog
-</code></pre></div></div>
-<h5 id="安装主题">安装主题</h5>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd </span>myblog
-git init 
-git  submodule add https://github.com/olOwOlo/hugo-theme-even themes/even
-</code></pre></div></div>
-<h5 id="修改配置">修改配置</h5>
-<p>可以把主题目录下的config.toml拷贝覆盖到hugo站点根目录myblog下的config.toml，然后根据自己的需求及环境做对应修改。每项配置都有详细注释。</p>
-<h5 id="发表博客文章">发表博客文章</h5>
-<p>hugo可以直接写Markdown格式的博文，构建时会将其转成网页。</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>hugo new post/my-first-post.md <span class="c"># 会根据模板生成一个Md文件（注意路径名是post不是posts），编辑此文件开始写文章</span>
-</code></pre></div></div>
-<h5 id="调试站点效果">调试站点效果</h5>
-<p>hugo本身带有一个web server，方便及时查看改动的网页效果。</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>hugo Server <span class="nt">-D</span> <span class="c"># 启动web server，打开浏览器输入 http://127.0.0.1:1313即可查看站点效果</span>
-<span class="c"># 几个有用的启动参数</span>
-hugo Server <span class="nt">-D</span> <span class="nt">--bind</span> <span class="s2">"0.0.0.0"</span> <span class="c"># --bind 指定不同ip绑定，默认是"127.0.0.1"</span>
-hugo Server <span class="nt">-D</span> <span class="nt">--baseURL</span> <span class="s2">"http://127.0.0.1:1313"</span> <span class="c"># --baseURL 指定站点的地址</span>
-</code></pre></div></div>
-<h5 id="构建生成最终的静态网页">构建生成最终的静态网页</h5>
-<p>运行以下命令，会把站点所有静态内容文件生成在根目录下的public文件夹中，这也是后续正式部署的目标目录。</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>hugo <span class="nt">-D</span>
-</code></pre></div></div>
-
-<h3 id="安装isso">安装Isso</h3>
-<h5 id="安装python3">安装python3</h5>
-<p>Isso需要python3支持，centos7上安装python3可以按如下方式：</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 安装第三方软件源EPEL</span>
-yum <span class="nb">install </span>https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-<span class="c"># 安装python3</span>
-yum <span class="nb">install </span>python3
-<span class="c"># 安装gcc等构建工具集</span>
-yum groupinstall <span class="s1">'Development Tools'</span>
-<span class="c"># 安装python C API headers等</span>
-yum <span class="nb">install </span>python3-devel.x86_64  
-</code></pre></div></div>
-
-<h5 id="安装python虚拟环境">安装python虚拟环境</h5>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip3 <span class="nb">install </span>pipenv
-<span class="nb">mkdir </span>isso
-<span class="nb">cd </span>isso
-pipenv <span class="nt">--three</span> <span class="c"># 在isso创建python3虚拟环境</span>
-</code></pre></div></div>
-<p>pipenv会生成python3环境所需的所有文件到.venv文件夹，这个文件夹默认在~/.cache路径，可以设置export PIPENV_VENV_IN_PROJECT=”true”环境变量，让其生成在工程目录。</p>
-
-<h5 id="安装isso-1">安装Isso</h5>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pipenv shell
-pip <span class="nb">install </span>isso
-</code></pre></div></div>
-
-<h5 id="先根据自身需求修改isso-server配置">先根据自身需求修改Isso server配置</h5>
-<div class="language-ini highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">; |||||||||||| general settings ||||||||||||||
-</span><span class="nn">[general]</span>
-<span class="c">;database location. automatically created if doesn't already exist
-</span><span class="py">dbpath</span> <span class="p">=</span> <span class="s">/home/yourname/isso/comments.db</span>
-
-<span class="c">;this will be the 'X-Script-Name' we proxy server requests to [later!]
-</span><span class="py">name</span> <span class="p">=</span> <span class="s">isso</span>
-
-<span class="c">; your website or blog [not the location of Isso]
-</span><span class="py">host</span> <span class="p">=</span>
-    <span class="err">http://yoursite.com/</span>
-    <span class="err">https://yoursite.com/</span>
-
-<span class="c">; logfile. might need to create this first
-</span><span class="py">log-file</span> <span class="p">=</span> <span class="s">/home/yourname/isso/isso.log</span>
-
-<span class="c">; get notifications by email
-</span><span class="py">notify</span> <span class="p">=</span> <span class="s">smtp</span>
-
-<span class="c">;||||||||||| server section ||||||||||
-</span><span class="nn">[server]</span>
-<span class="c">;port to listen on. choose a number you like!
-</span><span class="py">listen</span> <span class="p">=</span> <span class="s">http://localhost:8181/</span>
-
-
-<span class="c">;||||||||| smtp section [for notifications] |||||
-</span><span class="nn">[smtp]</span>
-<span class="c">;these are the details for the 'from' address Isso uses to send notifications
-;you might want to use a dedicated email account for this
-</span><span class="py">username</span> <span class="p">=</span> <span class="s">yourusername</span>
-<span class="py">password</span> <span class="p">=</span> <span class="s">yourpassword</span>
-<span class="py">host</span> <span class="p">=</span> <span class="s">smtp.yourmailhost.com</span>
-<span class="py">port</span> <span class="p">=</span> <span class="s">587</span>
-<span class="py">security</span> <span class="p">=</span> <span class="s">starttls</span>
-
-<span class="c">;this is the 'to' address Isso sends notification emails to
-</span><span class="py">to</span> <span class="p">=</span> <span class="s">you@youremail.com</span>
-
-<span class="c">;from address as shown on emails. should correspond to sender account above
-</span><span class="py">from</span> <span class="p">=</span> <span class="s">"isso comments"</span> <span class="s">&lt;yourusername@yourmailhost.com&gt;</span>
-<span class="py">timeout</span> <span class="p">=</span> <span class="s">10</span>
-
-<span class="c">;|||||| guard –Isso's basic spam protection |||||||
-</span><span class="nn">[guard]</span>
-<span class="py">enabled</span> <span class="p">=</span> <span class="s">true</span>
-<span class="c">;no. of allowed comments per minute
-</span><span class="py">ratelimit</span> <span class="p">=</span> <span class="s">2</span>
-<span class="c">;no of direct replies allowed
-</span><span class="py">direct-reply</span> <span class="p">=</span> <span class="s">3</span>
-<span class="c">;can people reply to their own comments while edit window still open
-</span><span class="py">reply-to-self</span> <span class="p">=</span> <span class="s">false</span>
-<span class="c">;do commenters need to leave a name
-</span><span class="py">require-author</span> <span class="p">=</span> <span class="s">true</span>
-<span class="c">;do commenters need to provide an email
-</span><span class="py">require-email</span> <span class="p">=</span> <span class="s">false</span>
-
-<span class="c">;allowed markdown in comments. [uses misaka markdown]
-</span><span class="nn">[markup]</span>
-<span class="c">;default options allow most 'unharmful' markdown
-</span><span class="py">options</span> <span class="p">=</span> <span class="s">strikethrough, superscript, autolink</span>
-<span class="c">;default allowed = a, blockquote, br, code, del, em, h1, h2, h3, h4, h5, h6, hr, ins, li, ol, p, pre, strong, table, tbody, td, th, thead, ul
-;allowed-elements =
-;default allowed = align, href
-;allowed-attributes
-</span>
-<span class="c">;creates identicons for users across isso installations
-</span><span class="nn">[hash]</span>
-<span class="c">;OK to use this salt
-</span><span class="py">salt</span> <span class="p">=</span> <span class="s">Eech7co8Ohloopo9Ol6baimi</span>
-<span class="py">algorithm</span> <span class="p">=</span> <span class="s">pbkdf2</span>
-
-<span class="c">;comments must be moderated before publication
-;NOTE: requires "notify = smtp" to be set in the [general] section
-</span><span class="nn">[moderation]</span>
-<span class="py">enabled</span><span class="p">=</span><span class="s">false</span>
-</code></pre></div></div>
-<p>配置都有详细注释，也可见<a href="https://posativ.org/isso/docs/configuration/server/">文档描述</a>。</p>
-
-<h5 id="启动isso">启动Isso</h5>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>isso <span class="nt">-c</span> ~/isso/isso.cfg  
-</code></pre></div></div>
-<p>如果报错<code class="language-plaintext highlighter-rouge">ImportError: cannot import name SharedDataMiddleware</code>， 需要安装指定版本Werkzeug， 运行<code class="language-plaintext highlighter-rouge">pip install Werkzeug==0.16.1</code>。</p>
-
-<h5 id="isso客户端配置">Isso客户端配置</h5>
-<p>既在静态网页中需要引用Isso。修改hugo even主题文件：
-myglob/themes/even/layouts/partials/comments.html，这个文件里面有各种comments系统的配置，把isso的客户端配置加在最后（之前）</p>
-<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="c">&lt;!-- isso --&gt;</span>
-  <span class="nt">&lt;script </span><span class="na">data-isso=</span><span class="s">"isso/"</span> <span class="na">data-isso-require-author=</span><span class="s">"true"</span>  <span class="na">src=</span><span class="s">"isso/js/embed.min.js"</span><span class="nt">&gt;&lt;/script&gt;</span>
-  <span class="c">&lt;!-- end isso --&gt;</span>
-  
-  <span class="c">&lt;!-- begin comments //--&gt;</span>
-  <span class="nt">&lt;section</span> <span class="na">id=</span><span class="s">"isso-thread"</span><span class="nt">&gt;</span>
-  <span class="nt">&lt;/section&gt;</span>
-  <span class="c">&lt;!-- end comments //--&gt;</span>
-</code></pre></div></div>
-<p>更多配置见<a href="https://posativ.org/isso/docs/configuration/client/">文档</a>。</p>
-
-<h3 id="安装ngix">安装Ngix</h3>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>yum <span class="nb">install </span>nginx
-</code></pre></div></div>
-
-<h3 id="部署">部署</h3>
-<h5 id="isso部署">isso部署</h5>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#添加新用户和组</span>
-useradd <span class="nt">-m</span> <span class="nt">-r</span> <span class="nt">-s</span> /sbin/nologin isso
-<span class="c">#添加工作目录</span>
-<span class="nb">chown</span> <span class="nt">-R</span> isso:isso /home/isso
-</code></pre></div></div>
-<h5 id="配置isso-service">配置isso service</h5>
-<p>新建文件/etc/systemd/system/isso.service</p>
-<div class="language-conf highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[<span class="n">Unit</span>]
-<span class="n">Description</span>=<span class="n">Isso</span> <span class="n">Comments</span>
-<span class="c">#start after networking stuff has loaded
-</span><span class="n">After</span>=<span class="n">network</span>.<span class="n">target</span>
-
-[<span class="n">Service</span>]
-<span class="c">#your name
-</span><span class="n">User</span>=<span class="n">isso</span>
-<span class="c">#group webserver runs under when serving web pages
-</span><span class="n">Group</span>=<span class="n">isso</span>
-<span class="n">WorkingDirectory</span>=/<span class="n">home</span>/<span class="n">isso</span>
-<span class="c">#max file dscriptor [equivalent of ulimit in terminal]
-</span><span class="n">LimitNOFILE</span>=<span class="m">8192</span>
-<span class="c">#location of isso script to run &amp; location of its config file
-#note the isso script is in the `bin` folder in your virtual environment
-#you don't need to activate your virtual environment here
-#it will automatically be activated when the isso script within it runs
-</span><span class="n">ExecStart</span>=/<span class="n">home</span>/<span class="n">isso</span>/.<span class="n">venv</span>/<span class="n">bin</span>/<span class="n">isso</span>  -<span class="n">c</span> /<span class="n">home</span>/<span class="n">isso</span>/<span class="n">isso</span>.<span class="n">cfg</span>
-<span class="c">#respawn isso process if it crashes
-</span><span class="n">Restart</span>=<span class="n">on</span>-<span class="n">failure</span>
-<span class="c">#wait 10 mins to respawn, if it's crashing constantly
-</span><span class="n">StartLimitInterval</span>=<span class="m">600</span>
-
-[<span class="n">Install</span>]
-<span class="c">#target [??? not sure what this means]
-</span><span class="n">WantedBy</span>=<span class="n">multi</span>-<span class="n">user</span>.<span class="n">target</span>
-
-<span class="c">#don't forget to enable it: sudo systemctl enable isso
-</span></code></pre></div></div>
-<p>设置开机启动</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>systemctl <span class="nb">enable </span>isso
-</code></pre></div></div>
-<h5 id="部署nginx">部署Nginx</h5>
-<p>创建静态网页目录/www/data/</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">mkdir</span> <span class="nt">-p</span>  /www/data/myblog/public
-<span class="nb">chown</span> <span class="nt">-R</span> nginx:nginx /www/data
-</code></pre></div></div>
-<p>nginx配置如下</p>
-<div class="language-conf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">user</span> <span class="n">nginx</span>;
-<span class="n">worker_processes</span> <span class="n">auto</span>;
-<span class="n">error_log</span> /<span class="n">var</span>/<span class="n">log</span>/<span class="n">nginx</span>/<span class="n">error</span>.<span class="n">log</span>;
-<span class="n">pid</span> /<span class="n">run</span>/<span class="n">nginx</span>.<span class="n">pid</span>;
-
-<span class="c"># Load dynamic modules. See /usr/share/doc/nginx/README.dynamic.
-</span><span class="n">include</span> /<span class="n">usr</span>/<span class="n">share</span>/<span class="n">nginx</span>/<span class="n">modules</span>/*.<span class="n">conf</span>;
-
-<span class="n">events</span> {
-    <span class="n">worker_connections</span> <span class="m">1024</span>;
-}
-
-<span class="n">http</span> {
-    <span class="n">log_format</span>  <span class="n">main</span>  <span class="s1">'$remote_addr - $remote_user [$time_local] "$request" '</span>
-                      <span class="s1">'$status $body_bytes_sent "$http_referer" '</span>
-                      <span class="s1">'"$http_user_agent" "$http_x_forwarded_for"'</span>;
-
-    <span class="n">access_log</span>  /<span class="n">var</span>/<span class="n">log</span>/<span class="n">nginx</span>/<span class="n">access</span>.<span class="n">log</span>  <span class="n">main</span>;
-
-    <span class="n">sendfile</span>            <span class="n">on</span>;
-    <span class="n">tcp_nopush</span>          <span class="n">on</span>;
-    <span class="n">tcp_nodelay</span>         <span class="n">on</span>;
-    <span class="n">keepalive_timeout</span>   <span class="m">65</span>;
-    <span class="n">types_hash_max_size</span> <span class="m">2048</span>;
-
-    <span class="n">include</span>             /<span class="n">etc</span>/<span class="n">nginx</span>/<span class="n">mime</span>.<span class="n">types</span>;
-    <span class="n">default_type</span>        <span class="n">application</span>/<span class="n">octet</span>-<span class="n">stream</span>;
-
-    <span class="c"># Load modular configuration files from the /etc/nginx/conf.d directory.
-</span>    <span class="c"># See http://nginx.org/en/docs/ngx_core_module.html#include
-</span>    <span class="c"># for more information.
-</span>    <span class="n">include</span> /<span class="n">etc</span>/<span class="n">nginx</span>/<span class="n">conf</span>.<span class="n">d</span>/*.<span class="n">conf</span>;
-
-    <span class="n">server</span> {
-        <span class="n">listen</span>       <span class="m">80</span> <span class="n">default_server</span>;
-        <span class="n">listen</span>       [::]:<span class="m">80</span> <span class="n">default_server</span>;
-        <span class="n">server_name</span>  <span class="err">_</span>;
-        <span class="n">root</span>         /<span class="n">usr</span>/<span class="n">share</span>/<span class="n">nginx</span>/<span class="n">html</span>;
-
-        <span class="c"># Load configuration files for the default server block.
-</span>        <span class="n">include</span> /<span class="n">etc</span>/<span class="n">nginx</span>/<span class="n">default</span>.<span class="n">d</span>/*.<span class="n">conf</span>;
-
-        <span class="n">location</span> /<span class="n">isso</span> {
-            <span class="n">proxy_set_header</span> <span class="n">X</span>-<span class="n">Script</span>-<span class="n">Name</span> /<span class="n">isso</span>;
-            <span class="n">proxy_set_header</span> <span class="n">X</span>-<span class="n">Forwarded</span>-<span class="n">For</span> $<span class="n">proxy_add_x_forwarded_for</span>;
-            <span class="n">proxy_set_header</span> <span class="n">Host</span> $<span class="n">host</span>;
-            <span class="n">proxy_set_header</span> <span class="n">X</span>-<span class="n">Forwarded</span>-<span class="n">Proto</span> $<span class="n">scheme</span>;
-            <span class="n">proxy_pass</span> <span class="n">http</span>://<span class="m">127</span>.<span class="m">0</span>.<span class="m">0</span>.<span class="m">1</span>:<span class="m">8181</span>;
-        }
-
-        <span class="n">location</span> / {
-            <span class="n">root</span> /<span class="n">www</span>/<span class="n">data</span>/<span class="n">myblog</span>/<span class="n">public</span>;
-        }
-   }
-   }
-</code></pre></div></div>
-<p>把hugo生成的public目录上传到服务器的/www/data/myblog/public位置</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>rsync <span class="nt">-avz</span> <span class="nt">--delete</span> public/ www-data@ftp.topologix.fr:~/www/
-</code></pre></div></div>
-<h5 id="启动服务">启动服务</h5>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>systemctl start nginx.service
-systemctl start isso.service
-</code></pre></div></div>
-
-<h3 id="参考">参考</h3>
-<p><a href="https://gohugo.io/documentation/">Hugo Documentation</a></p>
-
-<p><a href="https://posativ.org/isso/docs/">Isso Documentation</a></p>
-
-<p><a href="https://stiobhart.net/2017-02-24-isso-comments/">Hugo with Isso</a></p>
 
         </div>
 
@@ -604,7 +306,7 @@ Merkele 树就是按照以上描述的规则之下而上生成，生成的根节
     
       <li class="list-group-item">
         <a href="/tags.html#Linux"> Linux</a>
-        <span class="badge">1</span>
+        <span class="badge">2</span>
       </li>
     
       <li class="list-group-item">
@@ -619,11 +321,26 @@ Merkele 树就是按照以上描述的规则之下而上生成，生成的根节
     
       <li class="list-group-item">
         <a href="/tags.html#Network"> Network</a>
-        <span class="badge">1</span>
+        <span class="badge">2</span>
       </li>
     
       <li class="list-group-item">
         <a href="/tags.html#C"> C</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Golang"> Golang</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Game"> Game</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Server"> Server</a>
         <span class="badge">1</span>
       </li>
     
@@ -643,7 +360,7 @@ Merkele 树就是按照以上描述的规则之下而上生成，生成的根节
 
     <footer class="footer">
   <div class="copyright">
-      Copyright &copy; <time datetime="2021-01-04T20:42:21+08:00">2021</time> <a href="http://longzhiri.github.io">longzhiri</a> | Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a> | Designed by <a href="http://longzhiri.github.io">longzhiri</a>
+      Copyright &copy; <time datetime="2021-01-07T22:31:36+08:00">2021</time> <a href="http://longzhiri.github.io">longzhiri</a> | Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a> | Designed by <a href="http://longzhiri.github.io">longzhiri</a>
   </div>
 </footer>
 

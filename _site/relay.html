@@ -8,7 +8,7 @@
   <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
   <title>
     
-      Relay &middot; l's Blog
+      Relay:基于zmq的进程间连接通信解耦 &middot; l's Blog
     
   </title>
 
@@ -98,7 +98,7 @@
   <div class="row-fluid main">
     <div class="col-md-9 content">
       <article class="post">
-        <h1 class="post-title">Relay</h1>
+        <h1 class="post-title">Relay:基于zmq的进程间连接通信解耦</h1>
 
         <div class="post-info">
           <span class="post-date">04 Jan 2021</span>
@@ -115,9 +115,7 @@
 
         <hr>
         <div class="post-content">
-          <h1 id="relay基于zmq的进程间连接通信解耦">relay:基于zmq的进程间连接通信解耦</h1>
-
-<p>后端服务通常是多个进程各自提供部分功能联合起来作为整体对外提供服务，经常会有不同后端进程间互相通信的需求，有时还有进程间相互保活维持连接状态的需求。如果进程数比较少，相互建立网络连接也能简单解决，但如果服务扩展，进程数变多了，网络拓扑结构连接错综复杂，难以部署和动态扩容。</p>
+          <p>后端服务通常是多个进程各自提供部分功能联合起来作为整体对外提供服务，经常会有不同后端进程间互相通信的需求，有时还有进程间相互保活维持连接状态的需求。如果进程数比较少，相互建立网络连接也能简单解决，但如果服务扩展，进程数变多了，网络拓扑结构连接错综复杂，难以部署和动态扩容。</p>
 
 <p><a href="https://github.com/longzhiri/relay">源代码在此</a></p>
 
@@ -186,6 +184,8 @@ zmq_socket_monitor并不好用，比如事件的参数都是原始的fd，并不
         <a href="/Hugo+Isso+build+blog.html" class="btn previous" title="Hugo + Isso 搭建blog">&larr; Hugo + Isso 搭建blog</a>
         
         
+        <a href="/Golang+Game+Logic+Sever+Design.html" class="btn next" title="Golang多线程游戏逻辑服务器设计">Golang多线程游戏逻辑服务器设计 &rarr;</a>
+        
       </nav>
 
       <hr>
@@ -194,6 +194,13 @@ zmq_socket_monitor并不好用，比如事件的参数都是原始的fd，并不
       <aside class="related">
         <h3>Related Posts</h3>
         <ul class="related-posts">
+          
+            <li>
+              <a href="/Golang+Game+Logic+Sever+Design.html">
+                Golang多线程游戏逻辑服务器设计
+                <small><time datetime="2021-01-07T00:00:00+08:00">07 Jan 2021</time></small>
+              </a>
+            </li>
           
             <li>
               <a href="/Hugo+Isso+build+blog.html">
@@ -247,7 +254,7 @@ gitment.render('container')
 
     <footer class="footer">
   <div class="copyright">
-      Copyright &copy; <time datetime="2021-01-04T20:42:21+08:00">2021</time> <a href="http://longzhiri.github.io">longzhiri</a> | Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a> | Designed by <a href="http://longzhiri.github.io">longzhiri</a>
+      Copyright &copy; <time datetime="2021-01-07T22:31:36+08:00">2021</time> <a href="http://longzhiri.github.io">longzhiri</a> | Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a> | Designed by <a href="http://longzhiri.github.io">longzhiri</a>
   </div>
 </footer>
 
