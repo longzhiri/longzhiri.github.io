@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+  <title>
+    
+      一种游戏排行榜的高效实现：改进的redis-like zset &middot; l's Blog
+    
+  </title>
+
+  <!-- Bootstrap -->
+  <link rel="stylesheet" href="/assets/bootstrap-3.3.7-dist/css/bootstrap.min.css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="/assets/font-awesome/css/font-awesome.min.css">
+  <!-- My CSS -->
+  <link rel="stylesheet" href="/assets/main.css">
+
+  <!-- MathJax -->
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      TeX: {
+        equationNumbers: {
+          autoNumber: "AMS"
+        }
+      },
+      tex2jax: {
+        inlineMath: [ ['$','$'] ],
+        displayMath: [ ['$$','$$'] ],
+        processEscapes: true,
+      }
+    });
+  </script>
+  
+
+  <!-- code highlighting-->
+  <link rel="stylesheet" href="/lib/highlight/styles/hybrid.css">
+  <script src="/lib/highlight/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <script>hljs.configure({ ignore: ['text'] });</script>
+  
+  <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+  <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+  <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+  <![endif]-->
+</head>
+
+<body>
+    <header class="header">
+  <!-- Navigation -->
+  <nav class="navbar navbar-default .navbar-static-top">
+    <div class="container">
+      <!-- Brand and toggle get grouped for better mobile display -->
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+          <span class="sr-only">Toggle navigation</span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+      </div>
+
+      <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+        <ul class="nav navbar-nav navbar-right">
+          <li class="nav-search">
+            <form class="navbar-form navbar-left" role="search" id="search-form">
+              <div class="input-group">
+                  <span class="input-group-btn">
+                    <button class="btn btn-default" type="button" style="color:#777">Go!</button>
+                  </span>
+                  <input type="text" id="search-input" class="form-control" placeholder="Search">
+                  
+              </div>
+            </form>
+          </li>
+          <li>
+            <a href="/archives.html">Archives</a>
+          </li>
+          <li>
+            <a href="/tags.html">Tags</a>
+          </li>
+          <li>
+            <a href="/about.html">About</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+</header>
+
+  
+    <div class="container">
+  <div class="row-fluid main">
+    <div class="col-md-9 content">
+      <article class="post">
+        <h1 class="post-title">一种游戏排行榜的高效实现：改进的redis-like zset</h1>
+
+        <div class="post-info">
+          <span class="post-date">13 Jan 2021</span>
+           | 
+            <span class="fa fa-tag" aria-hidden="true">
+            
+              <a class="post-tags" href="/tags.html#Algorithm">Algorithm</a>
+            
+            </span>
+          
+        </div>
+
+        <hr>
+        <div class="post-content">
+          <p>游戏中经常有排行榜的需求，例如对玩家的战力进行全服排行，跨服排行，竞技场段位积分排行，副本伤害排行等。设计一个排行榜系统一般来说需要能提供以下接口：</p>
+
+<ol>
+  <li>Add：增加或更新键值对（key，score），并能按照score排序；</li>
+  <li>Remove：根据key删除一个键值对；</li>
+  <li>Rank：根据key获取排行名次；</li>
+  <li>TopN：返回前N名（key，score）列表；</li>
+  <li>Reset：重置；</li>
+</ol>
+
+<p>redis的zset数据结构很契合这个需求，事实上也有很多排行榜是用redis来实现的，这里想基于redis-like zset数据结构，深入分析下游戏中排行榜的特性，探讨一种优化和简单的实现方式。</p>
+
+<h2 id="去除redis的依赖">去除redis的依赖</h2>
+<p>仅仅是为了使用zset引入redis依赖有些不那么经济，zset本身是skiplist+hashmap的实现，移植到游戏进程内实现并不需要花多少代价，毕竟skiplist相比平衡二叉树一大优势就是实现简单。zset中skiplist的作用是按照score排序，可以认为是一个有序表，以score作key，支持range，rank操作；hashmap的作用则是建立真正的key到score的映射，对外的接口都是以key做参数，需要首先通过hashmap索引到score，再使用score作key去skiplist操作。附上关于redis作者Antirez关于为什么用skiplist而不是平衡二叉树（比如红黑树，AVL）来实现zset的解释：</p>
+
+<blockquote>
+  <p>They are not very memory intensive. It’s up to you basically. Changing parameters about the probability of a node to have a given number of levels will make then less memory intensive than btrees.</p>
+
+  <p>A sorted set is often target of many ZRANGE or ZREVRANGE operations, that is, traversing the skip list as a linked list. With this operation the cache locality of skip lists is at least as good as with other kind of balanced trees.</p>
+
+  <p>They are simpler to implement, debug, and so forth. For instance thanks to the skip list simplicity I received a patch (already in Redis master) with augmented skip lists implementing ZRANK in O(log(N)). It required little changes to the code.</p>
+</blockquote>
+
+<h2 id="对zset定制化的改进">对zset定制化的改进</h2>
+<p>skiplist作为有序表，增删查找及rank操作的平均时间复杂度都可以达到O(logn)，原理上用到了冗余的层数加速搜索，也是一种空间换时间的方法，实际使用上当有多个几十万量级的排行榜时，消耗内存很可观。</p>
+
+<p>几乎所有排行榜只需要排出名次靠前的一些玩家（比如前1500名，后面都以1500名举例），超过名次的玩家既不需要展示在排行榜中，亦无需显示名次，那么对于这部分玩家也应用相同代价的排序是否是浪费呢？</p>
+
+<p>有些排行榜的score是只增不减的，比如战斗伤害数值排行，对于这种情况，无需zset这种复杂数据结构，甚至只要维护一个固定长度的有序数组，更新操作就是往后找到比自己大的项，一边比较一边交换，rank操作可以通过维护一个key到数组index的map来达到O(1)的平均时间复杂度，得益于只排前面1500名的玩家，低于1500名分数的可以略过不处理， 整个实现内存紧凑，实现简单，运行高效。</p>
+
+<p>但是，大部分的排行榜score允许增加和降低，基于后1500名无rank需求但有顺序需求，把前1500的玩家放在skiplist进行排行，后面的玩家则放在最大堆中进行排序，前面的人掉下来会移动到堆中并把堆中最大值顶上去，堆的实现可以是数组，所用到的操作pop，push，remove，时间复杂度都是O（logn），另外堆是按照score排序的，需要一个hashmap建立score对应数组的index，方便在O（logn）时间内完成remove操作。得益于heap无需提供rank操作，及实现上紧密的内存结构和O（logn）的最差时间复杂度，性能比全量的skiplist排序无论是时间花费和空间花费都有可观的降低，后面会有详细的benchmark数据比较。</p>
+
+<p>对于同分score的处理，几乎所有排行榜都要求先上榜的排在前面，实现上可以用真实score和一个自增的计数器作为排序的组合key，score相同的计数器值小的优先级高，自增计数器每新添加一个元素则增加1，以此区分加入排行榜的先后顺序。</p>
+
+<h2 id="评测">评测</h2>
+<p>按照本文所述的代码实现在<a href="https://github.com/longzhiri/gozset">https://github.com/longzhiri/gozset</a>，实际压测的结果如下：</p>
+
+<pre><code class="language-Bash">BenchmarkZSetAdd-4                       1278654               862 ns/op             377 B/op          1 allocs/op
+BenchmarkZSetAddNoHeapMap-4               926547              4383 ns/op            1207 B/op          4 allocs/op
+BenchmarkZSetRemove-4                    1229588               936 ns/op              43 B/op          1 allocs/op
+BenchmarkZSetRemoveNoHeapMap-4           1000000              3270 ns/op             256 B/op          1 allocs/op
+BenchmarkZSetRank-4                      3538854               298 ns/op               0 B/op          0 allocs/op
+BenchmarkZSetRankNoHeampMap-4            1405663               974 ns/op               0 B/op          0 allocs/op
+BenchmarkZSetTopN-4                       132181              8300 ns/op            4912 B/op          2 allocs/op
+BenchmarkZSetTopNNoHeapMap-4              133660              9044 ns/op            4912 B/op          2 allocs/op
+BenchmarkZSetMarshal-4                     10000            220510 ns/op          229425 B/op          3 allocs/op
+BenchmarkZSetMarshalNoHeapMap-4            10000            663226 ns/op          163888 B/op
+</code></pre>
+<p>可以看到使用heap优化后比优化前大致上Add平均快了5倍，内存消耗确只有原来的1/3，Remove快了3倍，内存消耗确只有原来的1/6，Rank快了3倍。</p>
+
+
+        </div>
+        <br><br>
+      </article>
+
+      <nav class="post-pagination">
+        
+        <a href="/Golang+Game+Logic+Sever+Design.html" class="btn previous" title="Golang多线程游戏逻辑服务器设计">&larr; Golang多线程游戏逻辑服务器设计</a>
+        
+        
+      </nav>
+
+      <hr>
+
+      
+      <aside class="related">
+        <h3>Related Posts</h3>
+        <ul class="related-posts">
+          
+            <li>
+              <a href="/Golang+Game+Logic+Sever+Design.html">
+                Golang多线程游戏逻辑服务器设计
+                <small><time datetime="2021-01-07T00:00:00+08:00">07 Jan 2021</time></small>
+              </a>
+            </li>
+          
+            <li>
+              <a href="/relay.html">
+                Relay:基于zmq的进程间连接通信解耦
+                <small><time datetime="2021-01-04T00:00:00+08:00">04 Jan 2021</time></small>
+              </a>
+            </li>
+          
+            <li>
+              <a href="/Hugo+Isso+build+blog.html">
+                Hugo + Isso 搭建blog
+                <small><time datetime="2020-07-26T00:00:00+08:00">26 Jul 2020</time></small>
+              </a>
+            </li>
+          
+        </ul>
+      </aside>
+      
+
+      <!-- Gitment -->
+<div id="container"></div>
+<link rel="stylesheet" href="https://imsun.github.io/gitment/style/default.css">
+<script src="https://imsun.github.io/gitment/dist/gitment.browser.js"></script>
+<script>
+var gitment = new Gitment({
+  id: '页面 ID', // 可选。默认为 location.href
+  owner: 'longzhiri',
+  repo: 'longzhiri.github.io',
+  oauth: {
+    client_id: '40054f53427decc34ab1',
+    client_secret: 'd074254a9560c3477283da056388cd00e9122246',
+  },
+})
+gitment.render('container')
+</script>
+
+    </div>
+    
+    <div class="col-md-3 post-sidebar">
+      <div class="sidebar-content" id="sidebar">
+  <nav class="header-list-sidebar">
+    <ul id="sideNav" class="nav headers-sidenav">
+        <!-- code will be generated in TOC.js -->
+    </ul>
+  </nav>
+</div>
+    </div>
+  </div>
+</div>
+
+
+    <footer class="footer">
+  <div class="copyright">
+      Copyright &copy; <time datetime="2021-01-13T22:24:58+08:00">2021</time> <a href="http://longzhiri.github.io">longzhiri</a> | Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a> | Designed by <a href="http://longzhiri.github.io">longzhiri</a>
+  </div>
+</footer>
+
+    <a href="#top" class="back-to-top">^</a>
+
+<!--      -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="/assets/js/jquery-1.12.4.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="/assets/bootstrap-3.3.7-dist/js/bootstrap.min.js"></script>
+    <!-- TOC -->
+    <script src="/assets/js/toc/TOC.js"></script>
+
+    <script>$("#search-form").submit(function(event){
+      var query = document.getElementById("search-input").value;
+      window.open("http://google.com/search?q=" + query + "%20site:" + "lszero.github.io");
+    });</script>
+  </body>
+</html>
