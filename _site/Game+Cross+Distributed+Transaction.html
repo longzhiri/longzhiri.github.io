@@ -8,7 +8,7 @@
   <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
   <title>
     
-      Relay:基于zmq的进程间连接通信解耦 &middot; l's Blog
+      一种游戏跨服交易行的分布式事务实现 &middot; l's Blog
     
   </title>
 
@@ -98,16 +98,18 @@
   <div class="row-fluid main">
     <div class="col-md-9 content">
       <article class="post">
-        <h1 class="post-title">Relay:基于zmq的进程间连接通信解耦</h1>
+        <h1 class="post-title">一种游戏跨服交易行的分布式事务实现</h1>
 
         <div class="post-info">
-          <span class="post-date">04 Jan 2021</span>
+          <span class="post-date">28 Jan 2021</span>
            | 
             <span class="fa fa-tag" aria-hidden="true">
             
-              <a class="post-tags" href="/tags.html#Network">Network</a>
+              <a class="post-tags" href="/tags.html#Game">Game</a>
             
-              <a class="post-tags" href="/tags.html#C">C</a>
+              <a class="post-tags" href="/tags.html#Distributed">Distributed</a>
+            
+              <a class="post-tags" href="/tags.html#Database">Database</a>
             
             </span>
           
@@ -115,64 +117,44 @@
 
         <hr>
         <div class="post-content">
-          <p>后端服务通常是多个进程各自提供部分功能联合起来作为整体对外提供服务，经常会有不同后端进程间互相通信的需求，有时还有进程间相互保活维持连接状态的需求。如果进程数比较少，相互建立网络连接也能简单解决，但如果服务扩展，进程数变多了，网络拓扑结构连接错综复杂，难以部署和动态扩容。</p>
+          <p>由于游戏业务逻辑的特殊性，并不适合转化成简单的数据库的CRUD操作，以及游戏对于时延的敏感、频繁操作数据对性能的高要求等，服务器的逻辑一般并不直接操作数据库，大多都是预先加载在内存进行操作，内存数据则定时异步存盘，数据库在这里主要提供了持久化功能，鲜少用到数据库的事务。这样的数据管理策略，在进程宕机时只会丢几分钟数据，且大部分需要数据一致性的数据大多时候刚好能在同一个批次存盘或者不存盘，线上实践中一般不会出问题或者出的问题可以忍受。然而，到了跨服交易行这种跨多个进程的需求，保持事务是不可绕过的需要解决的问题。</p>
 
-<p><a href="https://github.com/longzhiri/relay">源代码在此</a></p>
+<h2 id="问题描述">问题描述</h2>
+<p>跨服交易行简单的来说就是：每个服的玩家都能往交易行中寄卖自己的道具，也能在交易行中购买其他玩家的寄卖道具。以购买流程为例来阐述我们需要解决的问题，主要是要保证以下四个步骤在一个事务中完成：</p>
 
-<h3 id="relay的设计目的">relay的设计目的</h3>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. 买主需要扣除一定金币成功；
+2. 交易行中扣除指定购买数目的道具；
+3. 卖家需要加上一定金币；
+4. 把指定购买数目的道具加入到买主背包；
+</code></pre></div></div>
 
-<p>relay server解耦原来需要互相连接进行通信的进程，所有relay client进程只连接relay server，relay server路由转发relay client之间的通信消息。client本身可以带有基于每次连接会话的状态，旧的连接会话中的消息不能影响新的连接会话。relay client能及时获取到彼此的存活状态，断开连接会话重连尝试建立新会话。</p>
+<p>跨服架构可以有多种，但都离不开跨进程之间的事务，这里假设跨服的架构是很多区服进程（game server）共享一个跨服组进程（zone server），所有各个区服玩家上架到交易行的道具由各个game server推到zone server上去，交易行逻辑都会转到zone server上执行，全区服共享一个交易行。
+ 步骤1是在买主区服进程中执行，步骤2在zone server执行，步骤3在卖家区服进程中执行，步骤4又是转到买主区服进程中执行。</p>
 
-<h3 id="设计方案">设计方案</h3>
+<h2 id="分布式事务解决方案">分布式事务解决方案</h2>
 
-<p>使用ZMQ作为底层网络连接和消息通信机制，简化实现，跨平台，高效。</p>
-
-<ol>
-  <li>
-    <p>客户端，服务端分别使用DELEAR socket type 和 ROUTER socket type；</p>
-  </li>
-  <li>
-    <p>上层使用心跳检测网络连接状态，超时则触发重连；</p>
-  </li>
-  <li>
-    <p>维护客户端两两之间的连接状态，每条连接是一个连接会话，用递增的会话id标识，消息带上会话id发送，过期的会话消息会被丢弃；</p>
-  </li>
-  <li>
-    <p>客户端使用独立线程收发网络消息，应用层异步收发消息，不阻塞主线程，使用起来更灵活；</p>
-  </li>
-</ol>
-
-<h3 id="使用zmq">使用ZMQ</h3>
+<p>在不同进程中保持分布式事务有一些常见的解决方案：</p>
 
 <ol>
   <li>
-    <p>使用CZMQ的actor提供客户端多线程异步处理消息支持；</p>
+    <p>二阶段提交
+ 需要引入一个第三方事务管理器，在原本纯粹的游戏服务器架构中，引入这样的角色并不协调。如果一个进程响应变慢会拖慢整个事务进度，对于游戏中频繁发生的交易行事务势必会有性能瓶颈。我们能容忍低概率的游戏进程宕机，但是机房中并不低概率的网络波动导致网络链接断开进而丢失通信数据，也会引起数据的不一致性，破坏事务特性。</p>
   </li>
   <li>
-    <p>最初是计划监测网络断开和连接来维护连接状态，但是ZMQ并没有暴露给上层这样的事件回调接口，唯一可用的
-zmq_socket_monitor并不好用，比如事件的参数都是原始的fd，并不能很好的关联到对应的peer；</p>
+    <p>TCC
+ 更复杂的实现。无法同时满足游戏中频繁的交易行事务和低延时的需求。</p>
   </li>
   <li>
-    <p>不使用默认的连接断开重连机制，因为relay的连接是有状态的，一次连接会话成功不仅在于网络连接建立成功，还需要发送注册协议，需要等待收到注册协议回包，并且relay server会广播给其他客户端；</p>
-  </li>
-  <li>
-    <p>router socket type每次调用zmsg_recv收到的msg第一个frame是peer的identity数据，标识客户端身份。客户端则需要调用zmq_setsockopt设置自己的identity（如不设置，则会被分配唯一id），参考文档：id的第一个字节不能是0。同样发送msg时，第一个frame也得是目标客户端得id数据；</p>
+    <p>基于消息队列的实现
+ 需要引入消息中间件。目前游戏有一套成熟的消息RPC通信机制，许多业务和功能基于其上搭建，如果引入改动较大。</p>
   </li>
 </ol>
 
-<h3 id="reference">Reference</h3>
+<p>现在主要问题是进程间通信协议可能会丢失，无法确定对方是否已经执行过这个协议的处理，漏处理或者多处理都会打破事务性。一个方法是为每个这样的消息协议分配一个唯一的id，消息发送方生成带唯一id的消息存盘然后发往消息接收方处理，接收方处理并存下消息id，表示已经处理过。双方定时同步各自的消息id列表，如果双方都有的，代表处理过，可以删除释放存储空间。网络断线重连成功后，第一步先同步消息id列表，发送方发现接收发没有的消息需要重新重发。这种方法依赖消息处理是幂等的，就是无论什么时候执行都能是正确的。</p>
 
-<ol>
-  <li>
-    <p><a href="https://zguide.zeromq.org/">The Guide</a></p>
-  </li>
-  <li>
-    <p><a href="http://api.zeromq.org/">ZMQ API</a></p>
-  </li>
-  <li>
-    <p><a href="http://czmq.zeromq.org/czmq4-0:_start">CZMQ API</a></p>
-  </li>
-</ol>
+<p>还是以上面的例子为例，买主发起购买，在买主game server扣除玩家金币，生成购买消息协议和唯一id存盘，这两步通过本地事务保证。然后购买消息协议发往zone server，zone server判断货物存在，如果存在则扣除货物，存下购买消息协议的id，表示这个消息已经处理过，再生成购买回应消息协议和唯一id，通知买主game server购买成功，往后就是重复消息发送和消息处理过程，直到整个分布式事务完成或者失败回滚。整个分布式事务是有低概率在中途失败的，所以每一步都要支持回滚，回滚函数也必须是幂等的。</p>
+
+<p>这一套机制在原来的不保证事务的跨服实现上进行简单改动，就刚好能契合游戏跨服玩法分布式事务的需求，比如拍卖行，黑市等交易系统都适用这套机制。</p>
 
 
         </div>
@@ -181,10 +163,8 @@ zmq_socket_monitor并不好用，比如事件的参数都是原始的fd，并不
 
       <nav class="post-pagination">
         
-        <a href="/Hugo+Isso+build+blog.html" class="btn previous" title="Hugo + Isso 搭建blog">&larr; Hugo + Isso 搭建blog</a>
+        <a href="/gozset.html" class="btn previous" title="一种游戏排行榜的高效实现：改进的redis-like zset">&larr; 一种游戏排行榜的高效实现：改进的redis-like zset</a>
         
-        
-        <a href="/Golang+Game+Logic+Sever+Design.html" class="btn next" title="Golang多线程游戏逻辑服务器设计">Golang多线程游戏逻辑服务器设计 &rarr;</a>
         
       </nav>
 
@@ -194,13 +174,6 @@ zmq_socket_monitor并不好用，比如事件的参数都是原始的fd，并不
       <aside class="related">
         <h3>Related Posts</h3>
         <ul class="related-posts">
-          
-            <li>
-              <a href="/Game+Cross+Distributed+Transaction.html">
-                一种游戏跨服交易行的分布式事务实现
-                <small><time datetime="2021-01-28T00:00:00+08:00">28 Jan 2021</time></small>
-              </a>
-            </li>
           
             <li>
               <a href="/gozset.html">
@@ -213,6 +186,13 @@ zmq_socket_monitor并不好用，比如事件的参数都是原始的fd，并不
               <a href="/Golang+Game+Logic+Sever+Design.html">
                 Golang多线程游戏逻辑服务器设计
                 <small><time datetime="2021-01-07T00:00:00+08:00">07 Jan 2021</time></small>
+              </a>
+            </li>
+          
+            <li>
+              <a href="/relay.html">
+                Relay:基于zmq的进程间连接通信解耦
+                <small><time datetime="2021-01-04T00:00:00+08:00">04 Jan 2021</time></small>
               </a>
             </li>
           

@@ -8,7 +8,7 @@
   <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
   <title>
     
-      BitCoin SPV &middot; l's Blog
+      l's Blog &middot; 
     
   </title>
 
@@ -96,9 +96,12 @@
   
     <div class="container">
   <div class="row-fluid main">
-    <div class="col-md-9 content">
-      <article class="post">
-        <h1 class="post-title">BitCoin SPV</h1>
+    <div class="col-md-9 content main-posts-preview">
+      
+      <article class="post-preview">
+        <h1 class="post-title">
+          <a href="/spv.html">BitCoin SPV</a>
+        </h1>
 
         <div class="post-info">
           <span class="post-date">15 Oct 2017</span>
@@ -111,8 +114,7 @@
           
         </div>
 
-        <hr>
-        <div class="post-content">
+        <div class="post-excerpt">
           <p>一个比特币区块可以分为区块头和该区块包含的所有交易数据，区块头的大小是80字节，而一个交易的平均大小是250字节，平均一个区块包含超过500个交易，所以一个完整的区块大小几乎是区块头的1000倍。一个包含完整区块链数据的全节点占有可观的存储空间，但是许多比特币客户端（如智能手机等）不具备这样的条件，它们通常采用 SPV 技术只存储所有区块头组成的链表，这种设备被称为 SPV 客户端。</p>
 
 <h2 id="spv-如何验证交易">SPV 如何验证交易</h2>
@@ -157,78 +159,120 @@ Merkele 树就是按照以上描述的规则之下而上生成，生成的根节
 <p>为了解决这些风险，可以对连接通道进行加密并对连接的节点进行认证。</p>
 
         </div>
-        <br><br>
+
+        <div class="post-readmore">
+          <a class="read-more" href="/spv.html">Read More</a>
+        </div>
       </article>
-
-      <nav class="post-pagination">
-        
-        
-        <a href="/Hugo+Isso+build+blog.html" class="btn next" title="Hugo + Isso 搭建blog">Hugo + Isso 搭建blog &rarr;</a>
-        
-      </nav>
-
-      <hr>
+      <hr />
+      
 
       
-      <aside class="related">
-        <h3>Related Posts</h3>
-        <ul class="related-posts">
+      <nav aria-label="Page navigation">
+        <ul class="pagination">
           
-            <li>
-              <a href="/Game+Cross+Distributed+Transaction.html">
-                一种游戏跨服交易行的分布式事务实现
-                <small><time datetime="2021-01-28T00:00:00+08:00">28 Jan 2021</time></small>
-              </a>
-            </li>
+            <li><a href="/">&laquo;</a></li>
           
-            <li>
-              <a href="/gozset.html">
-                一种游戏排行榜的高效实现：改进的redis-like zset
-                <small><time datetime="2021-01-13T00:00:00+08:00">13 Jan 2021</time></small>
-              </a>
-            </li>
+
           
-            <li>
-              <a href="/Golang+Game+Logic+Sever+Design.html">
-                Golang多线程游戏逻辑服务器设计
-                <small><time datetime="2021-01-07T00:00:00+08:00">07 Jan 2021</time></small>
-              </a>
-            </li>
+            
+              <li><a href="/">1</a>
+              </li>
+            
+          
+            
+              <li class="active"><a>2</a></li>
+            
+          
+
+          
+            <li><span>&raquo;</span></li>
           
         </ul>
-      </aside>
+      </nav>
       
-
-      <!-- Gitment -->
-<div id="container"></div>
-<link rel="stylesheet" href="https://imsun.github.io/gitment/style/default.css">
-<script src="https://imsun.github.io/gitment/dist/gitment.browser.js"></script>
-<script>
-var gitment = new Gitment({
-  id: '页面 ID', // 可选。默认为 location.href
-  owner: 'longzhiri',
-  repo: 'longzhiri.github.io',
-  oauth: {
-    client_id: '40054f53427decc34ab1',
-    client_secret: 'd074254a9560c3477283da056388cd00e9122246',
-  },
-})
-gitment.render('container')
-</script>
-
     </div>
-    
-    <div class="col-md-3 post-sidebar">
+
+    <div class="col-md-3 main-sidebar">
       <div class="sidebar-content" id="sidebar">
-  <nav class="header-list-sidebar">
-    <ul id="sideNav" class="nav headers-sidenav">
-        <!-- code will be generated in TOC.js -->
+  <hr />
+
+  <nav class="tags-list">
+    <h3 class="sidebar-title">Tags</h3>
+    <ul class="list-group">
+    
+      <li class="list-group-item">
+        <a href="/tags.html#BitCoin"> BitCoin</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Linux"> Linux</a>
+        <span class="badge">2</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Python"> Python</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Blog"> Blog</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Network"> Network</a>
+        <span class="badge">2</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#C"> C</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Golang"> Golang</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Game"> Game</a>
+        <span class="badge">2</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Server"> Server</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Algorithm"> Algorithm</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Distributed"> Distributed</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Database"> Database</a>
+        <span class="badge">1</span>
+      </li>
+    
     </ul>
   </nav>
+
+  <hr />
+
 </div>
+
+
     </div>
   </div>
 </div>
+
 
 
     <footer class="footer">

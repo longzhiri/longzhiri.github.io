@@ -100,6 +100,37 @@
       
       <article class="post-preview">
         <h1 class="post-title">
+          <a href="/Game+Cross+Distributed+Transaction.html">一种游戏跨服交易行的分布式事务实现</a>
+        </h1>
+
+        <div class="post-info">
+          <span class="post-date">28 Jan 2021</span>
+           | 
+            <span class="fa fa-tag" aria-hidden="true">
+            
+              <a class="post-tags" href="/tags.html#Game">Game</a>
+            
+              <a class="post-tags" href="/tags.html#Distributed">Distributed</a>
+            
+              <a class="post-tags" href="/tags.html#Database">Database</a>
+            
+            </span>
+          
+        </div>
+
+        <div class="post-excerpt">
+          <p>由于游戏业务逻辑的特殊性，并不适合转化成简单的数据库的CRUD操作，以及游戏对于时延的敏感、频繁操作数据对性能的高要求等，服务器的逻辑一般并不直接操作数据库，大多都是预先加载在内存进行操作，内存数据则定时异步存盘，数据库在这里主要提供了持久化功能，鲜少用到数据库的事务。这样的数据管理策略，在进程宕机时只会丢几分钟数据，且大部分需要数据一致性的数据大多时候刚好能在同一个批次存盘或者不存盘，线上实践中一般不会出问题或者出的问题可以忍受。然而，到了跨服交易行这种跨多个进程的需求，保持事务是不可绕过的需要解决的问题。</p>
+
+        </div>
+
+        <div class="post-readmore">
+          <a class="read-more" href="/Game+Cross+Distributed+Transaction.html">Read More</a>
+        </div>
+      </article>
+      <hr />
+      
+      <article class="post-preview">
+        <h1 class="post-title">
           <a href="/gozset.html">一种游戏排行榜的高效实现：改进的redis-like zset</a>
         </h1>
 
@@ -227,74 +258,6 @@ go <span class="nb">install</span> <span class="nt">--tags</span> extended
       </article>
       <hr />
       
-      <article class="post-preview">
-        <h1 class="post-title">
-          <a href="/spv.html">BitCoin SPV</a>
-        </h1>
-
-        <div class="post-info">
-          <span class="post-date">15 Oct 2017</span>
-           | 
-            <span class="fa fa-tag" aria-hidden="true">
-            
-              <a class="post-tags" href="/tags.html#BitCoin">BitCoin</a>
-            
-            </span>
-          
-        </div>
-
-        <div class="post-excerpt">
-          <p>一个比特币区块可以分为区块头和该区块包含的所有交易数据，区块头的大小是80字节，而一个交易的平均大小是250字节，平均一个区块包含超过500个交易，所以一个完整的区块大小几乎是区块头的1000倍。一个包含完整区块链数据的全节点占有可观的存储空间，但是许多比特币客户端（如智能手机等）不具备这样的条件，它们通常采用 SPV 技术只存储所有区块头组成的链表，这种设备被称为 SPV 客户端。</p>
-
-<h2 id="spv-如何验证交易">SPV 如何验证交易</h2>
-<p>SPV 节点因为没有交易数据，没办法像全节点一样独立验证一个交易，它必须向周围的全节点查询交易是否存在某个区块中，如果在一个区块中，并且这个区块已经得到做够多的确认（已经有6个新块在其上生成了），从而这个交易得到认证。
-SPV 节点与周围的全节点建立连接，通过发送 getheaders 消息给对方来获取区块头，并且在连接上设置过滤器，获取自己感兴趣的交易数据以及新生成的区块头。</p>
-<h2 id="merkle-树">Merkle 树</h2>
-<p>SPV 节点没有完整的交易数据，是如何验证某个交易是否存在于区块中的呢？这里用到了一个数据结构 Merkle 树：</p>
-
-<p><img src="/assets/img/Hash_Tree.svg.png" alt="Hash Tree" height="70%" width="70%" /></p>
-
-<p>Merkle 树是一棵满二叉树，叶节点是这个区块中各个交易数据的Hash值（运行两次SHA256），非页节点是对两个子节点的连接（HA+HB）求Hash值：</p>
-
-<p><img src="/assets/img/Merkle_Tree.png" alt="Merkle Tree" height="70%" width="70%" /></p>
-
-<ol>
-  <li>HA = SHA256(SHA256(Transaction A Data))</li>
-  <li>HB = SHA256(SHA256(Transaction B Data))</li>
-  <li>HAB = SHA256(SHA256(HA+HB))</li>
-</ol>
-
-<p>为了生成一棵满二叉树，当交易个数是奇数的时候，会复制最后一个交易作最后一个叶节点。
-Merkele 树就是按照以上描述的规则之下而上生成，生成的根节点最后会保存到区块头中。</p>
-<h2 id="spv-使用-merkle-路径验证交易">SPV 使用 Merkle 路径验证交易</h2>
-<p>现在SPV 节点想验证上图（Merkle Tree）中的交易A是否存在，只需要知道节点HB和HCD就可以算出来根节点，然后与区块头中保存的根节点作比较，如果相匹配就验证了A存在该区块中。在这里HB和HCD称作交易A的 Merkle 路径。</p>
-
-<p>SPV 节点在和其他全节点的连接上设置了过滤器表示对A交易感兴趣，当有一个全节点遇到A交易后，就会通过 merkleblock 消息把该交易数据和其所在的区块头，以及 Mekle 路径数据传给它，SPV 节点可以验证A是否存在该区块中，并把区块头链接到自己的区块链中。</p>
-<h2 id="bloom-过滤器">Bloom 过滤器</h2>
-<p>上文说SPV 节点可以设置过滤器过滤自己感兴趣的交易，而不用接收所有交易数据。这个过滤器最简单的实现是直接告诉对方想要什么样输出地址的交易等，从而可以在SPV 节点构建一个钱包。但是这个信息很可能被网络上的不怀好意的人监听，导致泄漏了自己的隐私。</p>
-
-<p>Bloom 过滤器可以描述一个你想要的搜索模式而不用直接告诉具体的东西（就像在搜索引擎中搜索关键字或者设置一个正则表达式匹配字符串一样），它提供了一种高效的方式可以让你表达你想要的搜索模式的同时可以保护你的隐私。</p>
-
-<p>使用者可以微调搜索模式，但是搜索模式越精确会带来越差的私密性，反之模式越不精确可能私密性越好。Bloom 过滤器的具体实现细节可以参考维基百科<a href="https://en.wikipedia.org/wiki/Bloom_filter">Bloom filter</a>，类似对原始数据做哈希运算，然后把输出信息编码到一个二进制串里面。</p>
-
-<p>SPV 节点会先把 bloom filter 初始化为空，意味着匹配不到任何数据，然后会把感兴趣的比特币地址，公钥，交易id，作为各个匹配模式集成到一个 bloom filter中，之后通过 filterload 消息发到全节点，在全节点这一方则会把每一个交易对这个 bloom filter做过滤，把匹配到的数据发回给 SPV 节点。</p>
-
-<h2 id="spv-风险">SPV 风险</h2>
-
-<p>SPV 节点可以验证一个交易是否存在，但是不能证实一个交易不存在，结果就是容易被不诚实的节点攻击，例如双花同一笔UTXO（Unspent Transaction Output），SPV 节点不能证实这个UTXO没有被其他交易花掉，有可能这个已经被花费的交易被不诚实的节点隐藏起来了。</p>
-
-<p>虽然bloom filter 过滤器在一定程度上保护了 SPV 节点的隐私，但是并不是完全私密的，只要在网络上进行长期监控收集到足够多的数据，还是能获取到有用信息的。</p>
-
-<p>为了解决这些风险，可以对连接通道进行加密并对连接的节点进行认证。</p>
-
-        </div>
-
-        <div class="post-readmore">
-          <a class="read-more" href="/spv.html">Read More</a>
-        </div>
-      </article>
-      <hr />
-      
 
       
       <nav aria-label="Page navigation">
@@ -308,9 +271,13 @@ Merkele 树就是按照以上描述的规则之下而上生成，生成的根节
               <li class="active"><a>1</a></li>
             
           
+            
+              <li><a href="/pages2/">2</a></li>
+            
+          
 
           
-            <li><span>&raquo;</span></li>
+            <li><a href="/pages2/">&raquo;</a></li>
           
         </ul>
       </nav>
@@ -362,7 +329,7 @@ Merkele 树就是按照以上描述的规则之下而上生成，生成的根节
     
       <li class="list-group-item">
         <a href="/tags.html#Game"> Game</a>
-        <span class="badge">1</span>
+        <span class="badge">2</span>
       </li>
     
       <li class="list-group-item">
@@ -372,6 +339,16 @@ Merkele 树就是按照以上描述的规则之下而上生成，生成的根节
     
       <li class="list-group-item">
         <a href="/tags.html#Algorithm"> Algorithm</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Distributed"> Distributed</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#Database"> Database</a>
         <span class="badge">1</span>
       </li>
     
@@ -391,7 +368,7 @@ Merkele 树就是按照以上描述的规则之下而上生成，生成的根节
 
     <footer class="footer">
   <div class="copyright">
-      Copyright &copy; <time datetime="2021-01-13T22:24:58+08:00">2021</time> <a href="http://longzhiri.github.io">longzhiri</a> | Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a> | Designed by <a href="http://longzhiri.github.io">longzhiri</a>
+      Copyright &copy; <time datetime="2021-01-28T21:18:53+08:00">2021</time> <a href="http://longzhiri.github.io">longzhiri</a> | Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a> | Designed by <a href="http://longzhiri.github.io">longzhiri</a>
   </div>
 </footer>
 
