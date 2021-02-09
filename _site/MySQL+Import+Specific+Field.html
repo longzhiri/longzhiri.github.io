@@ -8,7 +8,7 @@
   <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
   <title>
     
-      Relay:基于zmq的进程间连接通信解耦 &middot; l's Blog
+      MySQL导入导出指定列 &middot; l's Blog
     
   </title>
 
@@ -98,16 +98,14 @@
   <div class="row-fluid main">
     <div class="col-md-9 content">
       <article class="post">
-        <h1 class="post-title">Relay:基于zmq的进程间连接通信解耦</h1>
+        <h1 class="post-title">MySQL导入导出指定列</h1>
 
         <div class="post-info">
-          <span class="post-date">04 Jan 2021</span>
+          <span class="post-date">09 Feb 2021</span>
            | 
             <span class="fa fa-tag" aria-hidden="true">
             
-              <a class="post-tags" href="/tags.html#Network">Network</a>
-            
-              <a class="post-tags" href="/tags.html#C">C</a>
+              <a class="post-tags" href="/tags.html#Database">Database</a>
             
             </span>
           
@@ -115,65 +113,17 @@
 
         <hr>
         <div class="post-content">
-          <p>后端服务通常是多个进程各自提供部分功能联合起来作为整体对外提供服务，经常会有不同后端进程间互相通信的需求，有时还有进程间相互保活维持连接状态的需求。如果进程数比较少，相互建立网络连接也能简单解决，但如果服务扩展，进程数变多了，网络拓扑结构连接错综复杂，难以部署和动态扩容。</p>
+          <p>一般导入数据是按照行导入，但是有时只想导入一行中特定字段，一种可行的方案如下：</p>
 
-<p><a href="https://github.com/longzhiri/relay">源代码在此</a></p>
+<p>以表 test_out(id, data) 和 test_in(name, data)为例，想导入test_out.data字段到test_in.data中。</p>
 
-<h3 id="relay的设计目的">relay的设计目的</h3>
+<p>导出时同时生成sql语句：</p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="k">select</span> <span class="n">concat</span><span class="p">(</span><span class="nv">"update test_in set data=(X'"</span><span class="p">,</span> <span class="n">hex</span><span class="p">(</span><span class="k">data</span><span class="p">),</span> <span class="nv">"') where name='xxx';"</span><span class="p">)</span> <span class="k">into</span> <span class="n">outfile</span> <span class="nv">"/tmp/import.sql"</span> <span class="k">from</span> <span class="n">test_out</span> <span class="k">where</span> <span class="n">id</span><span class="o">=</span><span class="mi">1</span><span class="p">;</span>
+</code></pre></div></div>
+<p>把test_out中id=1的data字段导入到test_in中name=’xxx’的行。
+ data如果是二进制数据需要hex函数导出成16进制字符串，然后再以 X’…’ 的方式导入16进制字符串。</p>
 
-<p>relay server解耦原来需要互相连接进行通信的进程，所有relay client进程只连接relay server，relay server路由转发relay client之间的通信消息。client本身可以带有基于每次连接会话的状态，旧的连接会话中的消息不能影响新的连接会话。relay client能及时获取到彼此的存活状态，断开连接会话重连尝试建立新会话。</p>
-
-<h3 id="设计方案">设计方案</h3>
-
-<p>使用ZMQ作为底层网络连接和消息通信机制，简化实现，跨平台，高效。</p>
-
-<ol>
-  <li>
-    <p>客户端，服务端分别使用DELEAR socket type 和 ROUTER socket type；</p>
-  </li>
-  <li>
-    <p>上层使用心跳检测网络连接状态，超时则触发重连；</p>
-  </li>
-  <li>
-    <p>维护客户端两两之间的连接状态，每条连接是一个连接会话，用递增的会话id标识，消息带上会话id发送，过期的会话消息会被丢弃；</p>
-  </li>
-  <li>
-    <p>客户端使用独立线程收发网络消息，应用层异步收发消息，不阻塞主线程，使用起来更灵活；</p>
-  </li>
-</ol>
-
-<h3 id="使用zmq">使用ZMQ</h3>
-
-<ol>
-  <li>
-    <p>使用CZMQ的actor提供客户端多线程异步处理消息支持；</p>
-  </li>
-  <li>
-    <p>最初是计划监测网络断开和连接来维护连接状态，但是ZMQ并没有暴露给上层这样的事件回调接口，唯一可用的
-zmq_socket_monitor并不好用，比如事件的参数都是原始的fd，并不能很好的关联到对应的peer；</p>
-  </li>
-  <li>
-    <p>不使用默认的连接断开重连机制，因为relay的连接是有状态的，一次连接会话成功不仅在于网络连接建立成功，还需要发送注册协议，需要等待收到注册协议回包，并且relay server会广播给其他客户端；</p>
-  </li>
-  <li>
-    <p>router socket type每次调用zmsg_recv收到的msg第一个frame是peer的identity数据，标识客户端身份。客户端则需要调用zmq_setsockopt设置自己的identity（如不设置，则会被分配唯一id），参考文档：id的第一个字节不能是0。同样发送msg时，第一个frame也得是目标客户端得id数据；</p>
-  </li>
-</ol>
-
-<h3 id="reference">Reference</h3>
-
-<ol>
-  <li>
-    <p><a href="https://zguide.zeromq.org/">The Guide</a></p>
-  </li>
-  <li>
-    <p><a href="http://api.zeromq.org/">ZMQ API</a></p>
-  </li>
-  <li>
-    <p><a href="http://czmq.zeromq.org/czmq4-0:_start">CZMQ API</a></p>
-  </li>
-</ol>
-
+<p>当然也可以先在要导入的数据库生成一个和test_out表一样的临时表tmp_test_out，全量导入指定行，然后再把tmp_test_out中的指定列update到test_in，最后删除tmp_test_out。</p>
 
         </div>
         <br><br>
@@ -181,10 +131,8 @@ zmq_socket_monitor并不好用，比如事件的参数都是原始的fd，并不
 
       <nav class="post-pagination">
         
-        <a href="/Hugo+Isso+build+blog.html" class="btn previous" title="Hugo + Isso 搭建blog">&larr; Hugo + Isso 搭建blog</a>
+        <a href="/Game+Cross+Distributed+Transaction.html" class="btn previous" title="一种游戏跨服交易行的分布式事务实现">&larr; 一种游戏跨服交易行的分布式事务实现</a>
         
-        
-        <a href="/Golang+Game+Logic+Sever+Design.html" class="btn next" title="Golang多线程游戏逻辑服务器设计">Golang多线程游戏逻辑服务器设计 &rarr;</a>
         
       </nav>
 
@@ -194,13 +142,6 @@ zmq_socket_monitor并不好用，比如事件的参数都是原始的fd，并不
       <aside class="related">
         <h3>Related Posts</h3>
         <ul class="related-posts">
-          
-            <li>
-              <a href="/MySQL+Import+Specific+Field.html">
-                MySQL导入导出指定列
-                <small><time datetime="2021-02-09T00:00:00+08:00">09 Feb 2021</time></small>
-              </a>
-            </li>
           
             <li>
               <a href="/Game+Cross+Distributed+Transaction.html">
@@ -213,6 +154,13 @@ zmq_socket_monitor并不好用，比如事件的参数都是原始的fd，并不
               <a href="/gozset.html">
                 一种游戏排行榜的高效实现：改进的redis-like zset
                 <small><time datetime="2021-01-13T00:00:00+08:00">13 Jan 2021</time></small>
+              </a>
+            </li>
+          
+            <li>
+              <a href="/Golang+Game+Logic+Sever+Design.html">
+                Golang多线程游戏逻辑服务器设计
+                <small><time datetime="2021-01-07T00:00:00+08:00">07 Jan 2021</time></small>
               </a>
             </li>
           
