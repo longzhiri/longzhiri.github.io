@@ -100,6 +100,35 @@
       
       <article class="post-preview">
         <h1 class="post-title">
+          <a href="/Deep+Into+Golang+Function+Value.html">深入Golang函数变量的内部</a>
+        </h1>
+
+        <div class="post-info">
+          <span class="post-date">16 Feb 2021</span>
+           | 
+            <span class="fa fa-tag" aria-hidden="true">
+            
+              <a class="post-tags" href="/tags.html#Golang">Golang</a>
+            
+            </span>
+          
+        </div>
+
+        <div class="post-excerpt">
+          <p>今天在对一个golang工程做性能分析时遇到一个需求：有一个函数列表，存放了各种函数，程序一个一个处理列表中的函数，现在需要统计每个函数执行时间，并且打印执行慢的函数的名字及所在文件名和行号。runtime.FuncForPC可以获取一个函数的这些信息，但是参数需要传入函数地址，如何正确获取函数地址呢？取决于一个函数变量和函数地址的关系，让我们看一个例子：
+```Golang
+package main</p>
+
+        </div>
+
+        <div class="post-readmore">
+          <a class="read-more" href="/Deep+Into+Golang+Function+Value.html">Read More</a>
+        </div>
+      </article>
+      <hr />
+      
+      <article class="post-preview">
+        <h1 class="post-title">
           <a href="/MySQL+Import+Specific+Field.html">MySQL导入导出指定列</a>
         </h1>
 
@@ -218,35 +247,6 @@
       </article>
       <hr />
       
-      <article class="post-preview">
-        <h1 class="post-title">
-          <a href="/relay.html">Relay:基于zmq的进程间连接通信解耦</a>
-        </h1>
-
-        <div class="post-info">
-          <span class="post-date">04 Jan 2021</span>
-           | 
-            <span class="fa fa-tag" aria-hidden="true">
-            
-              <a class="post-tags" href="/tags.html#Network">Network</a>
-            
-              <a class="post-tags" href="/tags.html#C">C</a>
-            
-            </span>
-          
-        </div>
-
-        <div class="post-excerpt">
-          <p>后端服务通常是多个进程各自提供部分功能联合起来作为整体对外提供服务，经常会有不同后端进程间互相通信的需求，有时还有进程间相互保活维持连接状态的需求。如果进程数比较少，相互建立网络连接也能简单解决，但如果服务扩展，进程数变多了，网络拓扑结构连接错综复杂，难以部署和动态扩容。</p>
-
-        </div>
-
-        <div class="post-readmore">
-          <a class="read-more" href="/relay.html">Read More</a>
-        </div>
-      </article>
-      <hr />
-      
 
       
       <nav aria-label="Page navigation">
@@ -313,7 +313,7 @@
     
       <li class="list-group-item">
         <a href="/tags.html#Golang"> Golang</a>
-        <span class="badge">1</span>
+        <span class="badge">2</span>
       </li>
     
       <li class="list-group-item">
@@ -357,7 +357,7 @@
 
     <footer class="footer">
   <div class="copyright">
-      Copyright &copy; <time datetime="2021-02-09T11:21:28+08:00">2021</time> <a href="http://longzhiri.github.io">longzhiri</a> | Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a> | Designed by <a href="http://longzhiri.github.io">longzhiri</a>
+      Copyright &copy; <time datetime="2021-02-16T22:36:58+08:00">2021</time> <a href="http://longzhiri.github.io">longzhiri</a> | Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a> | Designed by <a href="http://longzhiri.github.io">longzhiri</a>
   </div>
 </footer>
 

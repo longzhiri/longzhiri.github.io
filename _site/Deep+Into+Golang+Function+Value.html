@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+  <title>
+    
+      深入Golang函数变量的内部 &middot; l's Blog
+    
+  </title>
+
+  <!-- Bootstrap -->
+  <link rel="stylesheet" href="/assets/bootstrap-3.3.7-dist/css/bootstrap.min.css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="/assets/font-awesome/css/font-awesome.min.css">
+  <!-- My CSS -->
+  <link rel="stylesheet" href="/assets/main.css">
+
+  <!-- MathJax -->
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      TeX: {
+        equationNumbers: {
+          autoNumber: "AMS"
+        }
+      },
+      tex2jax: {
+        inlineMath: [ ['$','$'] ],
+        displayMath: [ ['$$','$$'] ],
+        processEscapes: true,
+      }
+    });
+  </script>
+  
+
+  <!-- code highlighting-->
+  <link rel="stylesheet" href="/lib/highlight/styles/hybrid.css">
+  <script src="/lib/highlight/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <script>hljs.configure({ ignore: ['text'] });</script>
+  
+  <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+  <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+  <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+  <![endif]-->
+</head>
+
+<body>
+    <header class="header">
+  <!-- Navigation -->
+  <nav class="navbar navbar-default .navbar-static-top">
+    <div class="container">
+      <!-- Brand and toggle get grouped for better mobile display -->
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+          <span class="sr-only">Toggle navigation</span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+      </div>
+
+      <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+        <ul class="nav navbar-nav navbar-right">
+          <li class="nav-search">
+            <form class="navbar-form navbar-left" role="search" id="search-form">
+              <div class="input-group">
+                  <span class="input-group-btn">
+                    <button class="btn btn-default" type="button" style="color:#777">Go!</button>
+                  </span>
+                  <input type="text" id="search-input" class="form-control" placeholder="Search">
+                  
+              </div>
+            </form>
+          </li>
+          <li>
+            <a href="/archives.html">Archives</a>
+          </li>
+          <li>
+            <a href="/tags.html">Tags</a>
+          </li>
+          <li>
+            <a href="/about.html">About</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+</header>
+
+  
+    <div class="container">
+  <div class="row-fluid main">
+    <div class="col-md-9 content">
+      <article class="post">
+        <h1 class="post-title">深入Golang函数变量的内部</h1>
+
+        <div class="post-info">
+          <span class="post-date">16 Feb 2021</span>
+           | 
+            <span class="fa fa-tag" aria-hidden="true">
+            
+              <a class="post-tags" href="/tags.html#Golang">Golang</a>
+            
+            </span>
+          
+        </div>
+
+        <hr>
+        <div class="post-content">
+          <p>今天在对一个golang工程做性能分析时遇到一个需求：有一个函数列表，存放了各种函数，程序一个一个处理列表中的函数，现在需要统计每个函数执行时间，并且打印执行慢的函数的名字及所在文件名和行号。runtime.FuncForPC可以获取一个函数的这些信息，但是参数需要传入函数地址，如何正确获取函数地址呢？取决于一个函数变量和函数地址的关系，让我们看一个例子：</p>
+<pre><code class="language-Golang">package main
+
+func foo() {
+}
+
+func main() {
+    var f [2]func()
+    f[0] = foo 
+    f[1] = foo 
+    f[0]()
+    f[1]()
+}                 
+</code></pre>
+<p>编译成二进制文件，objdump -D main 反汇编结果main.main部分：</p>
+<pre><code class="language-X86ASM">...
+0000000000452340 &lt;main.main&gt;:
+  452340:   64 48 8b 0c 25 f8 ff    mov    %fs:0xfffffffffffffff8,%rcx
+  452347:   ff ff  
+  452349:   48 3b 61 10             cmp    0x10(%rcx),%rsp
+  45234d:   76 42                   jbe    452391 &lt;main.main+0x51&gt;
+  45234f:   48 83 ec 18             sub    $0x18,%rsp
+  452353:   48 89 6c 24 10          mov    %rbp,0x10(%rsp)
+  452358:   48 8d 6c 24 10          lea    0x10(%rsp),%rbp
+  45235d:   0f 57 c0                xorps  %xmm0,%xmm0
+  452360:   0f 11 04 24             movups %xmm0,(%rsp)
+  452364:   48 8d 05 dd 59 02 00    lea    0x259dd(%rip),%rax        # 477d48 &lt;go.func.*+0x46&gt;
+  45236b:   48 89 04 24             mov    %rax,(%rsp)
+  45236f:   48 89 44 24 08          mov    %rax,0x8(%rsp)
+  452374:   48 8b 14 24             mov    (%rsp),%rdx
+  452378:   48 8b 02                mov    (%rdx),%rax
+  45237b:   ff d0                   callq  *%rax  
+  45237d:   48 8b 54 24 08          mov    0x8(%rsp),%rdx
+  452382:   48 8b 02                mov    (%rdx),%rax
+  452385:   ff d0                   callq  *%rax  
+  452387:   48 8b 6c 24 10          mov    0x10(%rsp),%rbp
+  45238c:   48 83 c4 18             add    $0x18,%rsp
+  452390:   c3                      retq   
+  452391:   e8 0a 7b ff ff          callq  449ea0 &lt;runtime.morestack_noctxt&gt;
+  452396:   eb a8                   jmp    452340 &lt;main.main&gt;
+...
+</code></pre>
+<p>地址452364~45236b的指令可以认为匹配 f[0] = foo ，可以看出来函数变量实际上被赋予了地址0x259dd(%rip)，亦即注释中的地址值477d48，查找这个地址：</p>
+<pre><code class="language-X86ASM">    ...
+  477d46:   00 00                   add    %al,(%rax)
+  477d48:   30 23                   xor    %ah,(%rbx)
+  477d4a:   45 00 00                add    %r8b,(%r8)
+  477d4d:   00 00                   add    %al,(%rax)
+  477d4f:   00 10                   add    %dl,(%rax)
+  ...
+</code></pre>
+<p>后面的汇编指令无意义，只看477d48地址内存中8个字节的值是 452330 （little endian byte order），看起来也是一个地址值，查找这个地址：</p>
+<pre><code class="language-X86ASM">...
+0000000000452330 &lt;main.foo&gt;:
+  452330:   c3                      retq
+  452331:   cc                      int3
+  452332:   cc                      int3
+  452333:   cc                      int3
+  452334:   cc                      int3
+  452335:   cc                      int3
+  452336:   cc                      int3
+  452337:   cc                      int3
+  452338:   cc                      int3
+  452339:   cc                      int3
+  45233a:   cc                      int3
+  45233b:   cc                      int3
+  45233c:   cc                      int3
+  45233d:   cc                      int3
+  45233e:   cc                      int3
+  45233f:   cc                      int3
+
+0000000000452340 &lt;main.main&gt;:
+...
+</code></pre>
+<p>正好是foo函数地址。由此我们可以得出结论：函数变量存的其实是一个指针指向函数地址，因此我们可以这样获取函数地址：</p>
+<pre><code class="language-Golang">package main
+
+import (
+    "log"
+    "runtime"
+    "unsafe"
+)
+
+func foo() {
+}
+
+func main() {
+    var f func()
+    f = foo 
+    pc := **(**uintptr)(unsafe.Pointer(&amp;f))
+    fi := runtime.FuncForPC(pc)
+    log.Printf("func name=%v", fi.Name())
+}                            
+</code></pre>
+<p>go源码中没有函数变量内存布局的结构定义，但是slice，string类型都有：</p>
+<pre><code class="language-Golang">type SliceHeader struct {
+	Data uintptr
+	Len  int
+	Cap  int
+}
+
+
+type StringHeader struct {
+	Data uintptr
+	Len  int
+}
+</code></pre>
+
+<p>特别的，对于interface{}类型变量，go源码中定义的内存布局是这样的：</p>
+<pre><code class="language-Golang">type eface struct {
+	_type *_type
+	data  unsafe.Pointer
+}
+</code></pre>
+
+<p>_type 表示类型，data 指向具体值，可以理解interface{}为什么保存了类型信息，这是为了保证type switch和type assert正常工作，同时虽然它很像c语言中的void*，但是他能相对安全的使用。</p>
+
+<p>interface{}变量有一个很容易误用的case，变量i本身是nil和通过一个具体类型的nil值赋值的i是具有不同意义的。interface{}可以认为是一种特殊的interface type，所有类型都实现了这个特殊接口，因此这个容易误用的case存在在任何interface上，举一个例子：</p>
+<pre><code class="language-Golang">package main
+
+import "log"
+
+type IFoo interface {
+    foo()
+}
+
+type Foo struct {
+    d int
+}
+
+func (f *Foo) foo() {
+    log.Printf("d=%v", f.d)
+}
+
+func main() {
+    var ifs []IFoo
+    var f Foo
+    var pf *Foo
+    ifs = append(ifs, &amp;f, pf, nil)
+    for _, i := range ifs {
+        if i != nil {
+            i.foo()
+        }
+    }
+}
+</code></pre>
+<p>这段代码最终会panic在第二个i.foo()调用上，我们容易记得判断接口是否为nil，但是常常忘记判定接口中的值是否为nil，一种解决方法是使用反射：</p>
+<pre><code class="language-Golang"> for _, i := range ifs {
+        if i != nil &amp;&amp; !reflect.ValueOf(i).IsNil() {
+            i.foo()
+        }
+   }
+</code></pre>
+
+
+        </div>
+        <br><br>
+      </article>
+
+      <nav class="post-pagination">
+        
+        <a href="/MySQL+Import+Specific+Field.html" class="btn previous" title="MySQL导入导出指定列">&larr; MySQL导入导出指定列</a>
+        
+        
+      </nav>
+
+      <hr>
+
+      
+      <aside class="related">
+        <h3>Related Posts</h3>
+        <ul class="related-posts">
+          
+            <li>
+              <a href="/MySQL+Import+Specific+Field.html">
+                MySQL导入导出指定列
+                <small><time datetime="2021-02-09T00:00:00+08:00">09 Feb 2021</time></small>
+              </a>
+            </li>
+          
+            <li>
+              <a href="/Game+Cross+Distributed+Transaction.html">
+                一种游戏跨服交易行的分布式事务实现
+                <small><time datetime="2021-01-28T00:00:00+08:00">28 Jan 2021</time></small>
+              </a>
+            </li>
+          
+            <li>
+              <a href="/gozset.html">
+                一种游戏排行榜的高效实现：改进的redis-like zset
+                <small><time datetime="2021-01-13T00:00:00+08:00">13 Jan 2021</time></small>
+              </a>
+            </li>
+          
+        </ul>
+      </aside>
+      
+
+      <!-- Gitment -->
+<div id="container"></div>
+<link rel="stylesheet" href="https://imsun.github.io/gitment/style/default.css">
+<script src="https://imsun.github.io/gitment/dist/gitment.browser.js"></script>
+<script>
+var gitment = new Gitment({
+  id: '页面 ID', // 可选。默认为 location.href
+  owner: 'longzhiri',
+  repo: 'longzhiri.github.io',
+  oauth: {
+    client_id: '40054f53427decc34ab1',
+    client_secret: 'd074254a9560c3477283da056388cd00e9122246',
+  },
+})
+gitment.render('container')
+</script>
+
+    </div>
+    
+    <div class="col-md-3 post-sidebar">
+      <div class="sidebar-content" id="sidebar">
+  <nav class="header-list-sidebar">
+    <ul id="sideNav" class="nav headers-sidenav">
+        <!-- code will be generated in TOC.js -->
+    </ul>
+  </nav>
+</div>
+    </div>
+  </div>
+</div>
+
+
+    <footer class="footer">
+  <div class="copyright">
+      Copyright &copy; <time datetime="2021-02-16T22:36:58+08:00">2021</time> <a href="http://longzhiri.github.io">longzhiri</a> | Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a> | Designed by <a href="http://longzhiri.github.io">longzhiri</a>
+  </div>
+</footer>
+
+    <a href="#top" class="back-to-top">^</a>
+
+<!--      -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="/assets/js/jquery-1.12.4.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="/assets/bootstrap-3.3.7-dist/js/bootstrap.min.js"></script>
+    <!-- TOC -->
+    <script src="/assets/js/toc/TOC.js"></script>
+
+    <script>$("#search-form").submit(function(event){
+      var query = document.getElementById("search-input").value;
+      window.open("http://google.com/search?q=" + query + "%20site:" + "lszero.github.io");
+    });</script>
+  </body>
+</html>
