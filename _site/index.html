@@ -100,6 +100,34 @@
       
       <article class="post-preview">
         <h1 class="post-title">
+          <a href="/Golang+Runtime+Memory+Management.html">Golang runtime内存管理机制</a>
+        </h1>
+
+        <div class="post-info">
+          <span class="post-date">25 Mar 2021</span>
+           | 
+            <span class="fa fa-tag" aria-hidden="true">
+            
+              <a class="post-tags" href="/tags.html#Golang">Golang</a>
+            
+            </span>
+          
+        </div>
+
+        <div class="post-excerpt">
+          <p>工作中遇到一个golang项目内存占用非常多，于是根据pprof工具反馈的热点做了优化，优化后通过pprof能看出来改善明显，原来的热点几乎不见了，但是top上显示的RSS内存占用却没什么变化，于是用runtime.ReadMemStats想看下runtime自己统计的内存占用相关信息，这个函数返回的结构体<a href="https://golang.org/pkg/runtime/#MemStats">MemStats</a>：
+```Golang</p>
+
+        </div>
+
+        <div class="post-readmore">
+          <a class="read-more" href="/Golang+Runtime+Memory+Management.html">Read More</a>
+        </div>
+      </article>
+      <hr />
+      
+      <article class="post-preview">
+        <h1 class="post-title">
           <a href="/Deep+Into+Golang+Function+Value.html">深入Golang函数变量的内部</a>
         </h1>
 
@@ -212,41 +240,6 @@ package main</p>
       </article>
       <hr />
       
-      <article class="post-preview">
-        <h1 class="post-title">
-          <a href="/Golang+Game+Logic+Sever+Design.html">Golang多线程游戏逻辑服务器设计</a>
-        </h1>
-
-        <div class="post-info">
-          <span class="post-date">07 Jan 2021</span>
-           | 
-            <span class="fa fa-tag" aria-hidden="true">
-            
-              <a class="post-tags" href="/tags.html#Network">Network</a>
-            
-              <a class="post-tags" href="/tags.html#Golang">Golang</a>
-            
-              <a class="post-tags" href="/tags.html#Game">Game</a>
-            
-              <a class="post-tags" href="/tags.html#Linux">Linux</a>
-            
-              <a class="post-tags" href="/tags.html#Server">Server</a>
-            
-            </span>
-          
-        </div>
-
-        <div class="post-excerpt">
-          <p>现在的游戏服务器设计的时候为了提高吞吐量会考虑充分利用多核的性能，一种思路是偏向多进程并发模型，不同游戏系统可以独立拆分不同进程并行运行，进程之间通过RPC交互，另一种思路就是本文要谈到的多线程模型。</p>
-
-        </div>
-
-        <div class="post-readmore">
-          <a class="read-more" href="/Golang+Game+Logic+Sever+Design.html">Read More</a>
-        </div>
-      </article>
-      <hr />
-      
 
       
       <nav aria-label="Page navigation">
@@ -313,7 +306,7 @@ package main</p>
     
       <li class="list-group-item">
         <a href="/tags.html#Golang"> Golang</a>
-        <span class="badge">2</span>
+        <span class="badge">3</span>
       </li>
     
       <li class="list-group-item">
@@ -357,7 +350,7 @@ package main</p>
 
     <footer class="footer">
   <div class="copyright">
-      Copyright &copy; <time datetime="2021-02-16T22:36:58+08:00">2021</time> <a href="http://longzhiri.github.io">longzhiri</a> | Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a> | Designed by <a href="http://longzhiri.github.io">longzhiri</a>
+      Copyright &copy; <time datetime="2021-03-25T23:19:35+08:00">2021</time> <a href="http://longzhiri.github.io">longzhiri</a> | Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a> | Designed by <a href="http://longzhiri.github.io">longzhiri</a>
   </div>
 </footer>
 
