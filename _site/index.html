@@ -8,7 +8,7 @@
   <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
   <title>
     
-      l's Blog &middot; 
+      L &middot; 
     
   </title>
 
@@ -97,6 +97,37 @@
     <div class="container">
   <div class="row-fluid main">
     <div class="col-md-9 content main-posts-preview">
+      
+      <article class="post-preview">
+        <h1 class="post-title">
+          <a href="/Game+Servers+k8s+practice.html">游戏服务器kubernetes集群化实践</a>
+        </h1>
+
+        <div class="post-info">
+          <span class="post-date">26 May 2021</span>
+           | 
+            <span class="fa fa-tag" aria-hidden="true">
+            
+              <a class="post-tags" href="/tags.html#k8s">k8s</a>
+            
+              <a class="post-tags" href="/tags.html#containers">containers</a>
+            
+              <a class="post-tags" href="/tags.html#cluster">cluster</a>
+            
+            </span>
+          
+        </div>
+
+        <div class="post-excerpt">
+          <p>游戏服务器一个大区的游戏进程可以很多，比如多个负载均衡的登录进程，各区服游戏逻辑进程，有些游戏逻辑进程前面还往往还有个网关进程管理与客户端的链接，游戏逻辑进程有时为了利用多核性能会拆分不同进程，比如按场景划分进程，各区服之间通常还有跨服玩法使用的单独进程，当然mysql，etcd，redis等数据存储和cache进程也时常离不开。这么多进程互相之间需要提供服务和请求服务，如果都是各自维护一份配置文件，线上部署难度大且容易出错，通常运维会适配的开发一套运维工具，提供自动化部署，性能数据收集，进程监控，日志文件管理，事故告警等，同时开发也需要开发一些微服务中间件，例如服务发现，负载均衡等，以让集群中的微服务进程运转。</p>
+
+        </div>
+
+        <div class="post-readmore">
+          <a class="read-more" href="/Game+Servers+k8s+practice.html">Read More</a>
+        </div>
+      </article>
+      <hr />
       
       <article class="post-preview">
         <h1 class="post-title">
@@ -213,33 +244,6 @@ package main</p>
       </article>
       <hr />
       
-      <article class="post-preview">
-        <h1 class="post-title">
-          <a href="/gozset.html">一种游戏排行榜的高效实现：改进的redis-like zset</a>
-        </h1>
-
-        <div class="post-info">
-          <span class="post-date">13 Jan 2021</span>
-           | 
-            <span class="fa fa-tag" aria-hidden="true">
-            
-              <a class="post-tags" href="/tags.html#Algorithm">Algorithm</a>
-            
-            </span>
-          
-        </div>
-
-        <div class="post-excerpt">
-          <p>游戏中经常有排行榜的需求，例如对玩家的战力进行全服排行，跨服排行，竞技场段位积分排行，副本伤害排行等。设计一个排行榜系统一般来说需要能提供以下接口：</p>
-
-        </div>
-
-        <div class="post-readmore">
-          <a class="read-more" href="/gozset.html">Read More</a>
-        </div>
-      </article>
-      <hr />
-      
 
       
       <nav aria-label="Page navigation">
@@ -334,6 +338,21 @@ package main</p>
         <span class="badge">2</span>
       </li>
     
+      <li class="list-group-item">
+        <a href="/tags.html#k8s"> k8s</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#containers"> containers</a>
+        <span class="badge">1</span>
+      </li>
+    
+      <li class="list-group-item">
+        <a href="/tags.html#cluster"> cluster</a>
+        <span class="badge">1</span>
+      </li>
+    
     </ul>
   </nav>
 
@@ -350,7 +369,7 @@ package main</p>
 
     <footer class="footer">
   <div class="copyright">
-      Copyright &copy; <time datetime="2021-03-25T23:19:35+08:00">2021</time> <a href="http://longzhiri.github.io">longzhiri</a> | Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a> | Designed by <a href="http://longzhiri.github.io">longzhiri</a>
+      Copyright &copy; <time datetime="2021-05-26T23:41:54+08:00">2021</time> <a href="http://longzhiri.github.io">longzhiri</a> | Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a> | Designed by <a href="http://longzhiri.github.io">longzhiri</a>
   </div>
 </footer>
 

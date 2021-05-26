@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+  <title>
+    
+      游戏服务器kubernetes集群化实践 &middot; L
+    
+  </title>
+
+  <!-- Bootstrap -->
+  <link rel="stylesheet" href="/assets/bootstrap-3.3.7-dist/css/bootstrap.min.css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="/assets/font-awesome/css/font-awesome.min.css">
+  <!-- My CSS -->
+  <link rel="stylesheet" href="/assets/main.css">
+
+  <!-- MathJax -->
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      TeX: {
+        equationNumbers: {
+          autoNumber: "AMS"
+        }
+      },
+      tex2jax: {
+        inlineMath: [ ['$','$'] ],
+        displayMath: [ ['$$','$$'] ],
+        processEscapes: true,
+      }
+    });
+  </script>
+  
+
+  <!-- code highlighting-->
+  <link rel="stylesheet" href="/lib/highlight/styles/hybrid.css">
+  <script src="/lib/highlight/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <script>hljs.configure({ ignore: ['text'] });</script>
+  
+  <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+  <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+  <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+  <![endif]-->
+</head>
+
+<body>
+    <header class="header">
+  <!-- Navigation -->
+  <nav class="navbar navbar-default .navbar-static-top">
+    <div class="container">
+      <!-- Brand and toggle get grouped for better mobile display -->
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+          <span class="sr-only">Toggle navigation</span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+      </div>
+
+      <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+        <ul class="nav navbar-nav navbar-right">
+          <li class="nav-search">
+            <form class="navbar-form navbar-left" role="search" id="search-form">
+              <div class="input-group">
+                  <span class="input-group-btn">
+                    <button class="btn btn-default" type="button" style="color:#777">Go!</button>
+                  </span>
+                  <input type="text" id="search-input" class="form-control" placeholder="Search">
+                  
+              </div>
+            </form>
+          </li>
+          <li>
+            <a href="/archives.html">Archives</a>
+          </li>
+          <li>
+            <a href="/tags.html">Tags</a>
+          </li>
+          <li>
+            <a href="/about.html">About</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+</header>
+
+  
+    <div class="container">
+  <div class="row-fluid main">
+    <div class="col-md-9 content">
+      <article class="post">
+        <h1 class="post-title">游戏服务器kubernetes集群化实践</h1>
+
+        <div class="post-info">
+          <span class="post-date">26 May 2021</span>
+           | 
+            <span class="fa fa-tag" aria-hidden="true">
+            
+              <a class="post-tags" href="/tags.html#k8s">k8s</a>
+            
+              <a class="post-tags" href="/tags.html#containers">containers</a>
+            
+              <a class="post-tags" href="/tags.html#cluster">cluster</a>
+            
+            </span>
+          
+        </div>
+
+        <hr>
+        <div class="post-content">
+          <p>游戏服务器一个大区的游戏进程可以很多，比如多个负载均衡的登录进程，各区服游戏逻辑进程，有些游戏逻辑进程前面还往往还有个网关进程管理与客户端的链接，游戏逻辑进程有时为了利用多核性能会拆分不同进程，比如按场景划分进程，各区服之间通常还有跨服玩法使用的单独进程，当然mysql，etcd，redis等数据存储和cache进程也时常离不开。这么多进程互相之间需要提供服务和请求服务，如果都是各自维护一份配置文件，线上部署难度大且容易出错，通常运维会适配的开发一套运维工具，提供自动化部署，性能数据收集，进程监控，日志文件管理，事故告警等，同时开发也需要开发一些微服务中间件，例如服务发现，负载均衡等，以让集群中的微服务进程运转。</p>
+
+<p>当业务规模变大，稳定高效的服务治理能让团队更专注于业务迭代，提高研发效率。kubernetes（k8s）是可以帮助我们管理微服务的开源系统，它拥有一个庞大的生态系统，社区活跃，使用广泛，微服务治理解决方案成熟，被大量公司实际使用和验证。 而现今游戏服务器却大都还是按照老的运维方式开发部署，本文尝试把现有的游戏进程按大区进行kubernetes集群化来尝试研发模式的DevOps转变。</p>
+
+<h3 id="kubeadm创建多节点集群">kubeadm创建多节点集群</h3>
+<p>使用kubeadm创建多节点的集群，可参考以下两个文档：</p>
+<ol>
+  <li><a href="https://kubernetes.io/zh/docs/setup/production-environment/tools/kubeadm/install-kubeadm/">https://kubernetes.io/zh/docs/setup/production-environment/tools/kubeadm/install-kubeadm/</a></li>
+  <li><a href="https://kubernetes.io/zh/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/">https://kubernetes.io/zh/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/</a></li>
+</ol>
+
+<p>如果发现按照文档正确操作了，docker engine依旧不停报错，比如创建container失败等，考虑升级下linux内核，centos中执行如下命令：</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>yum update kernel <span class="nt">-y</span>
+</code></pre></div></div>
+
+<h3 id="kubernetes-agnostic">kubernetes-agnostic</h3>
+
+<p>应用程序对于kubernetes应该是无感知的（kubernetes-agnostic），理想中不应该为了适配kubernetes而去改动现有程序代码，特别是不应该调用kubernetes api，遵照此原则，本次实践也没有改动一行代码。</p>
+
+<h3 id="helm">helm</h3>
+<p>使用helm可以管理，安装，卸载，升级kubernetes应用（helm chart），实际实践中觉得参数化配置和一站式安装卸载非常方便，要知道一个k8s应用可能创建很多resource objects，helm能帮助跟踪管理，并且helm也能在开源的仓库中比如<a href="https://artifacthub.io/">https://artifacthub.io/</a>复用一些权威的chart，比如redis，mysql等。常用命令如下：</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 1. 安装一个chart</span>
+helm <span class="nb">install </span>my-release bitnami/mysql
+<span class="c"># 2. 卸载该release</span>
+helm uninstall my-release
+<span class="c"># 3. 测试写的k8s yaml template有没有一些语法错误</span>
+helm lint
+<span class="c"># 4. 调试chart用，不真正部署，会执行template渲染，生成最终的yaml文件</span>
+helm <span class="nb">install</span> <span class="nt">--dry-run</span> <span class="nt">--debug</span>
+</code></pre></div></div>
+
+<h3 id="statefulset">statefulset</h3>
+<p>最适配大多游戏进程的workload object是statefulset，比如大区中可能有很多区服，所有区分可以定义成一个statefulset object（这里假定叫game-server），replicas设置成区服数目，当这个statefulset object应用时，会为每个区服生代表区服进程的pod，主机名形如game-server-${id}。</p>
+
+<p>一般每个区服game server进程同时会关联一个网关gate server进程，用于处理客户端的网络链接，可以为所有网关也定义一个statefulset object（这里假定叫gate-server），replicas也设置成区服数目，statefulset object同时会伴随一个headless service创建，假如创建在default namespace下，每个gate server pods可以通过域名gate-server-${id}访问，得益于以此，旧的game server的配置中以前配的是关联的gate server的具体ip，现在可以配置相应gate server的域名，由k8s提供服务发现。至于不同game server配置不同域名，可以借由helm template渲染生成。</p>
+
+<p>每个gate server需要暴露不同对外接口给客户端链接，比如大多游戏看到的服务器列表，任意选择一个登录都是不同的服务器地址。这个没有其他办法，需要为每个区服pod创建对应Service，这个时候helm template可以帮上忙，根据由statefulset object启动的pod会具有形如”statefulset.kubernetes.io/pod-name: gate-server%d”的label，为每个gate server创建一个Service指定此label。</p>
+
+<p>通常在statefulset container command中通过hostname获取当前pod的序号（私以为k8s应该提供更便捷的方式获取），以此对应上区服id，然后根据id辅以helm template达到配置不同进程的启动参数目的。</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 取pod序号的一种方式</span>
+<span class="o">[[</span> <span class="sb">`</span><span class="nb">hostname</span><span class="sb">`</span> <span class="o">=</span>~ -<span class="o">([</span>0-9]+<span class="o">)</span><span class="nv">$ </span><span class="o">]]</span> <span class="o">||</span> <span class="nb">exit </span>1
+<span class="nv">ordinal</span><span class="o">=</span><span class="k">${</span><span class="nv">BASH_REMATCH</span><span class="p">[1]</span><span class="k">}</span>             
+</code></pre></div></div>
+<p>还可以在helm的values.yaml中定义区服数目，通过template range 区服数，自动化生成所有区服的配置。</p>
+
+<h3 id="configmap">configmap</h3>
+<p>通常一些游戏进程的配置是有多个目录和文件的，但是正常的以from-file参数指定一个目录来创建configmap有两个问题：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. 只能把目录中所有的文件分别创建key-value对，目录结构会丢失；
+2. from-file是命令行创建，无法在helm的template yaml文件中使用；
+</code></pre></div></div>
+
+<p>一个解决方案是把配置目录整个打成一个压缩包，将其内容以base64编码存放到binaryData字段下（较新的k8s版本支持），使其能在yaml中创建这种configmap。缺点就是在container的command中需要对挂载的配置文件解压缩。下面是创建该种configmap的template yaml：
+<img src="/assets/img/configmap.png" alt="configmap" /></p>
+<h3 id="containers">containers</h3>
+<ol>
+  <li>通常有些游戏进程之间启动有顺序依赖，比如逻辑进程依赖mysql启动，一般可以定义一些initContainers，在command脚本中不停的查询对应服务名字直到返回成功，如下：
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="k">until </span>nslookup tmysql
+ <span class="k">do
+ </span><span class="nb">echo</span> <span class="s2">"Waiting tmysql..."</span>
+ <span class="nb">sleep </span>1
+ <span class="k">done</span>
+</code></pre></div>    </div>
+  </li>
+  <li>在终结pod的container时，会向container进程发送SIGTERM信号通知退出，并等待一段时间（默认30s，terminationGracePeriodSeconds字段可配置），以此达到graceful shutdown的目的，这里可能会有两个问题:</li>
+</ol>
+
+<ul>
+  <li>SIGTERM只会发送给这个pod所有container中pid=1的进程，如果你是shell启动的(sh -c ./myprog)进程，pid=1的进程是shell而不是你自己的程序进程，解决办法是可以在shell脚本通过命令exec执行你的程序(exec ./myprog)，exec是直接替换当前进程的地址空间但保留进程ID。注意这里有个特别的地方，bash脚本中直接运行的程序（bash -c ./myprog）其实默认是exec执行，所以bash脚本通常pid=1的进程已经是你的程序了）;</li>
+  <li>有些进程并不通过处理SIGTERM信号优雅退出的。这个时候lifeCycle就能派上用场了，在容器被终止前，lifeCycle.preStop事件会被调用，可以在该事件中调用特定的程序优雅关闭服务。</li>
+</ul>
+
+<h3 id="persistent">persistent</h3>
+<p>当你的进程需要持久化时，一般需要申明一个pvc，或者会被绑定到一个事先创建的静态pv，或者会被绑定到一个由Persistent Volume provisioner动态创建的pv，然后mount进container来使用。我们的游戏进程game server需要把一些数据存到磁盘文件，为了能提高读写速度，想直接存到节点的磁盘，使用hostPath类型的pv是不可行的，因为会导致每次pod被调度到不同节点时读取不到之前的存盘文件，local类型的pv正好适用，但是也意味着你的pod和存储所在的node将会强绑定，如果node失效，pod也无法工作。</p>
+
+<h3 id="常用命令">常用命令</h3>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl logs xxx-pod <span class="c"># 查看xxx-pod日志</span>
+
+kubectl describe pod/service/statefulset xxx <span class="c">#查看resource yaml和当前状态</span>
+
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> xxx-pod <span class="nt">--</span> bash <span class="c"># 进入pod的容器执行bash，一般调试容器内进程用</span>
+
+kubectl exe <span class="nt">-it</span> dnsutil <span class="nt">--</span> bash <span class="c"># dnsutil镜像有dig和nslookup命令，常用来验证是否某个Service创建成功</span>
+
+docker build <span class="nt">-t</span> xxx <span class="nb">.</span> <span class="c"># 构建镜像</span>
+</code></pre></div></div>
+<p>推荐书籍 <a href="https://www.google.com/search?q=kubernets+in+action&amp;oq=kubernets+in+action&amp;aqs=chrome..69i57j0i10l9.5632j0j15&amp;sourceid=chrome&amp;ie=UTF-8">kubernetes in action</a></p>
+
+        </div>
+        <br><br>
+      </article>
+
+      <nav class="post-pagination">
+        
+        <a href="/Golang+Runtime+Memory+Management.html" class="btn previous" title="Golang runtime内存管理机制">&larr; Golang runtime内存管理机制</a>
+        
+        
+      </nav>
+
+      <hr>
+
+      
+      <aside class="related">
+        <h3>Related Posts</h3>
+        <ul class="related-posts">
+          
+            <li>
+              <a href="/Golang+Runtime+Memory+Management.html">
+                Golang runtime内存管理机制
+                <small><time datetime="2021-03-25T00:00:00+08:00">25 Mar 2021</time></small>
+              </a>
+            </li>
+          
+            <li>
+              <a href="/Deep+Into+Golang+Function+Value.html">
+                深入Golang函数变量的内部
+                <small><time datetime="2021-02-16T00:00:00+08:00">16 Feb 2021</time></small>
+              </a>
+            </li>
+          
+            <li>
+              <a href="/MySQL+Import+Specific+Field.html">
+                MySQL导入导出指定列
+                <small><time datetime="2021-02-09T00:00:00+08:00">09 Feb 2021</time></small>
+              </a>
+            </li>
+          
+        </ul>
+      </aside>
+      
+
+      <!-- Gitment -->
+<div id="container"></div>
+<link rel="stylesheet" href="https://imsun.github.io/gitment/style/default.css">
+<script src="https://imsun.github.io/gitment/dist/gitment.browser.js"></script>
+<script>
+var gitment = new Gitment({
+  id: '页面 ID', // 可选。默认为 location.href
+  owner: 'longzhiri',
+  repo: 'longzhiri.github.io',
+  oauth: {
+    client_id: '40054f53427decc34ab1',
+    client_secret: 'd074254a9560c3477283da056388cd00e9122246',
+  },
+})
+gitment.render('container')
+</script>
+
+    </div>
+    
+    <div class="col-md-3 post-sidebar">
+      <div class="sidebar-content" id="sidebar">
+  <nav class="header-list-sidebar">
+    <ul id="sideNav" class="nav headers-sidenav">
+        <!-- code will be generated in TOC.js -->
+    </ul>
+  </nav>
+</div>
+    </div>
+  </div>
+</div>
+
+
+    <footer class="footer">
+  <div class="copyright">
+      Copyright &copy; <time datetime="2021-05-26T23:41:54+08:00">2021</time> <a href="http://longzhiri.github.io">longzhiri</a> | Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a> | Designed by <a href="http://longzhiri.github.io">longzhiri</a>
+  </div>
+</footer>
+
+    <a href="#top" class="back-to-top">^</a>
+
+<!--      -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="/assets/js/jquery-1.12.4.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="/assets/bootstrap-3.3.7-dist/js/bootstrap.min.js"></script>
+    <!-- TOC -->
+    <script src="/assets/js/toc/TOC.js"></script>
+
+    <script>$("#search-form").submit(function(event){
+      var query = document.getElementById("search-input").value;
+      window.open("http://google.com/search?q=" + query + "%20site:" + "lszero.github.io");
+    });</script>
+  </body>
+</html>
